@@ -129,8 +129,8 @@ export function initChart(canvasId) {
                         label: function(context) {
                             const portfolioValue = context.parsed.y;
                             return `Portfolio Value: $${portfolioValue.toLocaleString('en-US', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 0
                             })}`;
                         },
                         afterLabel: function(context) {
@@ -144,8 +144,8 @@ export function initChart(canvasId) {
                                     maximumFractionDigits: 8
                                 })} BTC`,
                                 `BTC Price: $${btcPrice.toLocaleString('en-US', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 0
                                 })}`
                             ];
                         }

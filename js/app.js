@@ -81,8 +81,8 @@ function formatCurrency(amount) {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
     }).format(amount);
 }
 
@@ -104,9 +104,9 @@ function formatBtc(amount) {
  * @returns {string} Formatted percentage string
  */
 function formatPercentage(percentage) {
-    const percent = percentage * 100;
+    const percent = Math.round(percentage * 100);
     const sign = percent >= 0 ? '+' : '';
-    return `${sign}${percent.toFixed(2)}%`;
+    return `${sign}${percent}%`;
 }
 
 /**

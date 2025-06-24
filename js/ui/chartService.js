@@ -252,6 +252,7 @@ function updateTimeFormat(timeWindow) {
             timeConfig.displayFormats = { month: 'MMM yyyy' };
             chartInstance.options.scales.x.ticks.maxTicksLimit = 6;
             break;
+        case '10y':
         case 'all':
         default:
             timeConfig.unit = 'year';

@@ -17,6 +17,7 @@ export const TIME_WINDOWS = {
   '6mo': { days: 180, label: '6 Months', type: 'fixed' },
   '1y': { days: 365, label: '1 Year', type: 'fixed' },
   '5y': { days: 1825, label: '5 Years', type: 'fixed' },
+  '10y': { days: 3650, label: '10 Years', type: 'fixed' },
   'all': { days: Infinity, label: 'All Time', type: 'fixed' }
 };
 

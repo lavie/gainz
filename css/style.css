@@ -165,8 +165,8 @@ main {
     min-height: 0; /* Important for flex children */
 }
 
-/* Ensure minimum chart height on screens with insufficient height */
-@media (max-height: 900px) {
+/* Ensure minimum chart height on screens with insufficient height, but only for shorter screens */
+@media (max-height: 1000px) {
     .chart-section {
         min-height: 400px; /* Minimum chart height */
     }
@@ -182,8 +182,8 @@ main {
     }
 }
 
-/* Override ONLY for very large screens that have plenty of space */
-@media (min-height: 1200px) and (min-width: 1200px) {
+/* For screens taller than 1000px, always prevent scrolling */
+@media (min-height: 1000px) {
     body {
         overflow: hidden;
         height: 100vh;
@@ -317,6 +317,10 @@ main {
         height: auto;
         min-height: 100vh;
         padding: 1rem;
+    }
+    
+    main {
+        gap: 1rem; /* Reduce gap on mobile */
     }
     
     .github-link {

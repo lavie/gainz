@@ -393,13 +393,13 @@ function updateDisplay(btcAmount, currentPrice, historicalData = null) {
     globalBtcAmount = btcAmount;
     globalHistoricalData = historicalData;
     
-    const btcAmountEl = document.getElementById('btc-amount-display');
+    const btcAmountEl = document.getElementById('btc-amount-input');
     const currentPriceEl = document.getElementById('current-price-display');
     const portfolioValueEl = document.getElementById('portfolio-value-display');
     const statusEl = document.getElementById('status-display');
     
     if (btcAmountEl) {
-        btcAmountEl.textContent = formatBtc(btcAmount);
+        btcAmountEl.value = btcAmount;
     }
     
     if (currentPriceEl) {
@@ -466,6 +466,51 @@ function handleTimeWindowClick(event) {
             updateUrl(globalBtcAmount, currentTimeWindow);
         }
     }
+}
+
+/**
+ * Handle BTC amount input changes
+ * @param {Event} event - Input event
+ */
+function handleBtcAmountChange(event) {
+    const input = event.target;
+    let newAmount = parseFloat(input.value);
+    
+    // Validate input
+    if (isNaN(newAmount) || newAmount < 0) {
+        // If invalid, revert to previous value
+        input.value = globalBtcAmount;
+        return;
+    }
+    
+    // Limit to 8 decimal places (satoshi precision)
+    newAmount = Math.round(newAmount * 100000000) / 100000000;
+    
+    // Update input to show rounded value
+    if (newAmount !== parseFloat(input.value)) {
+        input.value = newAmount;
+    }
+    
+    // Update global state
+    globalBtcAmount = newAmount;
+    
+    // Update portfolio value display immediately
+    if (globalCurrentPrice) {
+        const portfolioValueEl = document.getElementById('portfolio-value-display');
+        if (portfolioValueEl) {
+            const portfolioValue = newAmount * globalCurrentPrice;
+            portfolioValueEl.textContent = formatCurrency(portfolioValue);
+        }
+    }
+    
+    // Recalculate metrics for current time window
+    if (globalHistoricalData) {
+        updatePortfolioMetricsForTimeWindow(currentTimeWindow);
+        updateChartForTimeWindow(currentTimeWindow);
+    }
+    
+    // Update URL with new BTC amount
+    updateUrl(newAmount, currentTimeWindow);
 }
 
 /**
@@ -560,6 +605,20 @@ async function init() {
         const timeWindowButtons = document.querySelector('.time-window-buttons');
         if (timeWindowButtons) {
             timeWindowButtons.addEventListener('click', handleTimeWindowClick);
+        }
+        
+        // Setup BTC amount input handlers
+        const btcInput = document.getElementById('btc-amount-input');
+        if (btcInput) {
+            // Update on input change (real-time)
+            btcInput.addEventListener('input', handleBtcAmountChange);
+            
+            // Also handle enter key and blur for better UX
+            btcInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    btcInput.blur();
+                }
+            });
         }
         
         // Add window resize listener for chart responsiveness

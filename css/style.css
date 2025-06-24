@@ -73,8 +73,61 @@ header h1 {
     color: var(--text-primary);
 }
 
-#btc-amount-display {
+/* BTC Amount Input Styling */
+.btc-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+#btc-amount-input {
+    background-color: transparent;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
     color: var(--bitcoin-orange);
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Source Code Pro', monospace;
+    text-align: center;
+    padding: 0.5rem 1rem;
+    width: 180px;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+#btc-amount-input:focus {
+    border-color: var(--bitcoin-orange);
+    box-shadow: 0 0 0 3px rgba(247, 147, 26, 0.1);
+    transform: scale(1.02);
+}
+
+#btc-amount-input:hover {
+    border-color: var(--bitcoin-orange);
+}
+
+#btc-amount-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.btc-unit {
+    color: var(--bitcoin-orange);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+/* Remove spinner arrows for a cleaner look */
+#btc-amount-input::-webkit-outer-spin-button,
+#btc-amount-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#btc-amount-input[type=number] {
+    -moz-appearance: textfield;
 }
 
 #current-price-display,
@@ -310,6 +363,16 @@ header h1 {
         font-size: 1.25rem;
     }
     
+    #btc-amount-input {
+        font-size: 1.25rem;
+        width: 150px;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .btc-unit {
+        font-size: 1.25rem;
+    }
+    
     #portfolio-value-display {
         font-size: 1.75rem;
     }
@@ -349,6 +412,16 @@ header h1 {
     }
     
     .portfolio-info > div > div {
+        font-size: 1.1rem;
+    }
+    
+    #btc-amount-input {
+        font-size: 1.1rem;
+        width: 120px;
+        padding: 0.35rem 0.7rem;
+    }
+    
+    .btc-unit {
         font-size: 1.1rem;
     }
     

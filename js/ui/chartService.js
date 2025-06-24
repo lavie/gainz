@@ -65,8 +65,27 @@ export function initChart(canvasId) {
                     }
                 },
                 y: {
+                    position: 'left',
                     grid: {
                         color: 'rgba(255, 255, 255, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#cccccc',
+                        maxTicksLimit: 8,
+                        font: {
+                            size: 11
+                        },
+                        callback: function(value) {
+                            return '$' + value.toLocaleString();
+                        }
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    position: 'right',
+                    grid: {
+                        display: false, // Don't show grid lines from right axis to avoid duplication
                         drawBorder: false
                     },
                     ticks: {
@@ -185,6 +204,19 @@ export function updateChart(priceData, btcAmount = 1, timeWindow = 'all') {
 
     // Update chart without animation
     chartInstance.update('none');
+    
+    // Sync the y-axes after update
+    if (chartInstance.scales.y && chartInstance.scales.y1) {
+        const leftScale = chartInstance.scales.y;
+        const rightScale = chartInstance.scales.y1;
+        
+        // Force the right axis to match the left axis scale
+        chartInstance.options.scales.y1.min = leftScale.min;
+        chartInstance.options.scales.y1.max = leftScale.max;
+        
+        // Update again to apply the synchronized scale
+        chartInstance.update('none');
+    }
 }
 
 /**

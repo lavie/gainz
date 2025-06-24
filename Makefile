@@ -1,6 +1,6 @@
 # Bitcoin Portfolio Tracker - Development Makefile
 
-.PHONY: help install dev serve test test-watch test-coverage fetch-prices convert-s2f clean
+.PHONY: help install dev serve test test-watch test-coverage fetch-prices update-prices check-prices convert-s2f clean
 
 # Default target
 help:
@@ -12,7 +12,9 @@ help:
 	@echo "  make test          - Run unit tests"
 	@echo "  make test-watch    - Run unit tests in watch mode"
 	@echo "  make test-coverage - Run unit tests with coverage report"
-	@echo "  make fetch-prices  - Update Bitcoin historical price data"
+	@echo "  make fetch-prices  - Fetch all Bitcoin historical price data (full refresh)"
+	@echo "  make update-prices - Update Bitcoin price data (incremental, only missing dates)"
+	@echo "  make check-prices  - Check what price data would be updated (dry-run)"
 	@echo "  make convert-s2f   - Convert s2f.js historical data to project format"
 	@echo "  make clean         - Clean node_modules and package-lock.json"
 	@echo ""
@@ -47,11 +49,23 @@ test-coverage: install
 	@echo "Running unit tests with coverage report..."
 	npm run test:coverage
 
-# Fetch Bitcoin historical price data
+# Fetch Bitcoin historical price data (full refresh)
 fetch-prices: install
 	@echo "Fetching Bitcoin historical price data from CoinGecko API..."
 	@echo "This may take a few seconds due to API rate limits..."
 	npm run fetch-prices
+
+# Update Bitcoin price data (incremental)
+update-prices: install
+	@echo "Updating Bitcoin price data with latest prices..."
+	@echo "Checking for missing dates and fetching only new data..."
+	node scripts/update-prices.js --verbose
+
+# Check what price data would be updated (dry-run)
+check-prices: install
+	@echo "Checking Bitcoin price data for missing dates..."
+	@echo "This will show what would be updated without making changes..."
+	node scripts/update-prices.js --dry-run --verbose
 
 # Convert s2f.js data to project format
 convert-s2f: install

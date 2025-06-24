@@ -1,7 +1,7 @@
 // Main application coordinator
 import { getCurrentPrice } from './data/priceService.js';
 import { loadHistoricalData, getLatestPrice, getPriceForDate } from './data/historicalData.js';
-import { calculatePortfolioMetrics } from './business/portfolio.js';
+import { calculatePortfolioMetrics, calculateYearsBetweenDates } from './business/portfolio.js';
 import { TIME_WINDOWS, filterByTimeWindow, getAvailableTimeWindows, getCalendarStartDate } from './business/timeWindows.js';
 import { 
     updateTimeWindowButtons, 
@@ -131,7 +131,7 @@ function updateMetricsDisplay(metrics) {
     const elements = {
         'total-gain-usd': formatCurrency(metrics.absoluteGain),
         'total-gain-percent': formatPercentage(metrics.percentageGain),
-        'cagr': formatPercentage(metrics.cagr),
+        'cagr': metrics.displayCAGR !== null ? formatPercentage(metrics.displayCAGR) : 'N/A*',
         'time-held': formatYears(metrics.years),
         'initial-value': formatCurrency(metrics.initialValue),
         'purchase-price': formatCurrency(metrics.initialValue / metrics.totalValue * getCurrentPriceFromMetrics(metrics))
@@ -153,8 +153,13 @@ function updateMetricsDisplay(metrics) {
             
             // Add styling for gains/losses
             if (id.includes('gain') || id === 'cagr') {
-                const numericValue = id === 'total-gain-usd' ? metrics.absoluteGain : metrics.percentageGain;
-                element.className = `metric-value ${numericValue >= 0 ? 'positive' : 'negative'}`;
+                if (id === 'cagr' && metrics.displayCAGR === null) {
+                    element.className = 'metric-value'; // No color for N/A
+                } else {
+                    const numericValue = id === 'total-gain-usd' ? metrics.absoluteGain : 
+                                       id === 'cagr' ? metrics.displayCAGR : metrics.percentageGain;
+                    element.className = `metric-value ${numericValue >= 0 ? 'positive' : 'negative'}`;
+                }
             }
         }
     });
@@ -169,6 +174,46 @@ let chartInstance = null;
 
 function getCurrentPriceForDisplay() {
     return globalCurrentPrice;
+}
+
+/**
+ * Add current API price as latest data point if it differs from historical data
+ * This ensures chart and metrics show consistent information
+ * @param {Array} priceData - Historical price data
+ * @param {number} currentPrice - Current API price
+ * @returns {Array} Enhanced price data with current price if needed
+ */
+function addCurrentPriceToData(priceData, currentPrice) {
+    if (!priceData || priceData.length === 0 || !currentPrice) {
+        return priceData;
+    }
+    
+    // Get the latest historical data point
+    const sortedData = [...priceData].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const latestHistorical = sortedData[sortedData.length - 1];
+    
+    if (!latestHistorical) {
+        return priceData;
+    }
+    
+    // Check if current API price is significantly different from latest historical
+    const priceDifference = Math.abs(currentPrice - latestHistorical.price);
+    const percentDifference = priceDifference / latestHistorical.price;
+    const THRESHOLD = 0.001; // 0.1% threshold
+    
+    if (percentDifference > THRESHOLD) {
+        // Add current price as "now" data point
+        const currentDataPoint = {
+            date: new Date(), // Current time
+            price: currentPrice
+        };
+        
+        console.log(`📊 Adding current API price to chart: $${currentPrice.toLocaleString()} (differs from latest historical by ${(percentDifference * 100).toFixed(2)}%)`);
+        
+        return [...sortedData, currentDataPoint];
+    }
+    
+    return sortedData;
 }
 
 /**
@@ -217,8 +262,11 @@ function updateChartForTimeWindow(timeWindow) {
             filteredData = priceData.filter(item => new Date(item.date) >= startDate);
         }
 
-        // Update chart with filtered data
-        updateChart(filteredData, globalBtcAmount, timeWindow);
+        // Add current API price as the latest data point if different from latest historical
+        const enhancedData = addCurrentPriceToData(filteredData, globalCurrentPrice);
+        
+        // Update chart with enhanced data
+        updateChart(enhancedData, globalBtcAmount, timeWindow);
         
     } catch (error) {
         console.warn('Failed to update chart:', error);
@@ -275,6 +323,39 @@ function updatePortfolioMetricsForTimeWindow(timeWindow) {
             
             // Find the closest available price to the start date
             const startPriceData = getPriceForDate(globalHistoricalData, startDate);
+            
+            // Special handling for 1D period: check if we're using stale data
+            if (timeWindow === '1d' && startPriceData) {
+                const latestHistorical = getLatestPrice(globalHistoricalData);
+                
+                // If start date equals latest historical date, the calculation would show 0% gain
+                // This happens when current price API fails and we fall back to historical data
+                if (startPriceData.date === latestHistorical.date) {
+                    console.warn('⚠️  1D calculation skipped: start price equals current price (using stale data)');
+                    
+                    // Show a more informative message
+                    const elements = {
+                        'total-gain-usd': 'N/A*',
+                        'total-gain-percent': 'N/A*',
+                        'cagr': 'N/A*',
+                        'time-held': formatYears(calculateYearsBetweenDates(new Date(startPriceData.date), new Date())),
+                        'initial-value': formatCurrency(globalBtcAmount * startPriceData.price),
+                        'purchase-price': formatCurrency(startPriceData.price)
+                    };
+                    
+                    Object.entries(elements).forEach(([id, value]) => {
+                        const element = document.getElementById(id);
+                        if (element) {
+                            element.textContent = value;
+                            element.className = 'metric-value';
+                        }
+                    });
+                    
+                    updateTimeWindowTitle(timeWindow, windowConfig);
+                    updateStatusWithTimeWindow(timeWindow, new Date(startPriceData.date), new Date(), 1);
+                    return;
+                }
+            }
             
             if (startPriceData) {
                 const actualStartDate = new Date(startPriceData.date);
@@ -438,6 +519,16 @@ async function init() {
             if (historicalData.status === 'fulfilled') {
                 const latestHistorical = getLatestPrice(historicalData.value);
                 finalCurrentPrice = latestHistorical.price;
+                
+                // Check if latest historical data is stale (more than 1 day old)
+                const latestDate = new Date(latestHistorical.date);
+                const now = new Date();
+                const daysSinceLatest = (now - latestDate) / (1000 * 60 * 60 * 24);
+                
+                if (daysSinceLatest > 1) {
+                    console.warn(`⚠️  Historical data is ${Math.round(daysSinceLatest)} days old. Current price may be inaccurate.`);
+                }
+                
                 console.log(`📊 Using latest historical price as fallback: $${finalCurrentPrice.toLocaleString()} (${latestHistorical.date})`);
             } else {
                 throw new Error('Failed to load both current and historical price data');

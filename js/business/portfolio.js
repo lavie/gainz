@@ -94,6 +94,25 @@ export function calculateYearsBetweenDates(startDate, endDate) {
 }
 
 /**
+ * Calculate display-friendly CAGR that handles short time periods appropriately
+ * @param {number} currentPrice - Current BTC price in USD
+ * @param {number} purchasePrice - Purchase price of BTC in USD
+ * @param {number} years - Time period in years
+ * @returns {number|null} CAGR as decimal, or null if time period is too short
+ */
+export function calculateDisplayCAGR(currentPrice, purchasePrice, years) {
+  // For periods less than 30 days, CAGR becomes unrealistic for display
+  const MIN_DAYS_FOR_CAGR = 30;
+  const minYearsForCAGR = MIN_DAYS_FOR_CAGR / 365.25;
+  
+  if (years < minYearsForCAGR) {
+    return null; // Don't show CAGR for very short periods
+  }
+  
+  return calculateCAGR(currentPrice, purchasePrice, years);
+}
+
+/**
  * Calculate portfolio metrics for a given time period
  * @param {number} btcAmount - Amount of BTC held
  * @param {number} currentPrice - Current BTC price in USD
@@ -108,12 +127,14 @@ export function calculatePortfolioMetrics(btcAmount, currentPrice, purchasePrice
   const percentageGain = calculatePercentageGain(currentPrice, purchasePrice);
   const years = calculateYearsBetweenDates(purchaseDate, currentDate);
   const cagr = calculateCAGR(currentPrice, purchasePrice, years);
+  const displayCAGR = calculateDisplayCAGR(currentPrice, purchasePrice, years);
   
   return {
     totalValue,
     absoluteGain,
     percentageGain,
     cagr,
+    displayCAGR, // Use this for UI display
     years,
     initialValue: btcAmount * purchasePrice
   };

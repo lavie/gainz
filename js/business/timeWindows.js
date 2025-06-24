@@ -7,7 +7,7 @@
  * Available time windows
  */
 export const TIME_WINDOWS = {
-  '1d': { days: 1, label: '1 Day', type: 'fixed' },
+  '1d': { days: 1, label: '1 Day', type: 'daily' },
   'wtd': { days: null, label: 'This Week', type: 'calendar' },
   'mtd': { days: null, label: 'This Month', type: 'calendar' },
   'ytd': { days: null, label: 'This Year', type: 'calendar' },
@@ -76,6 +76,19 @@ export function getStartOfYear(date = new Date()) {
 }
 
 /**
+ * Get start of yesterday (previous day's close) for a given date
+ * This represents the last market close before the current period
+ * @param {Date} date - Reference date
+ * @returns {Date} Start of yesterday date
+ */
+export function getStartOfYesterday(date = new Date()) {
+  const yesterday = new Date(date);
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(0, 0, 0, 0);
+  return yesterday;
+}
+
+/**
  * Get start date for calendar-based time windows
  * @param {string} timeWindow - Time window key
  * @param {Date} referenceDate - Reference date (default: now)
@@ -83,6 +96,8 @@ export function getStartOfYear(date = new Date()) {
  */
 export function getCalendarStartDate(timeWindow, referenceDate = new Date()) {
   switch (timeWindow) {
+    case '1d':
+      return getStartOfYesterday(referenceDate);
     case 'wtd':
       return getStartOfWeek(referenceDate);
     case 'mtd':
@@ -124,7 +139,7 @@ export function filterByTimeWindow(priceData, timeWindow, referenceDate = new Da
   
   let cutoffDate;
   
-  if (windowConfig.type === 'calendar') {
+  if (windowConfig.type === 'calendar' || windowConfig.type === 'daily') {
     cutoffDate = getCalendarStartDate(timeWindow, referenceDate);
   } else {
     cutoffDate = getDateDaysAgo(referenceDate, windowConfig.days);
@@ -200,7 +215,7 @@ export function getAvailableTimeWindows(priceData, referenceDate = new Date()) {
       return true;
     }
     
-    if (windowConfig.type === 'calendar') {
+    if (windowConfig.type === 'calendar' || windowConfig.type === 'daily') {
       // For calendar windows, check if we have data going back to the start of the period
       try {
         const startDate = getCalendarStartDate(window, referenceDate);

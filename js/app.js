@@ -11,6 +11,7 @@ import {
     updateTimeWindowAvailability,
     updateStatusWithTimeWindow
 } from './ui/display.js';
+import { initChart, updateChart, resizeChart } from './ui/chartService.js';
 
 /**
  * Parse URL parameters to get BTC amount
@@ -164,9 +165,64 @@ let globalCurrentPrice = 0;
 let globalBtcAmount = 1;
 let globalHistoricalData = null;
 let currentTimeWindow = 'all';
+let chartInstance = null;
 
 function getCurrentPriceForDisplay() {
     return globalCurrentPrice;
+}
+
+/**
+ * Update chart with data for current time window
+ * @param {string} timeWindow - Current time window
+ */
+function updateChartForTimeWindow(timeWindow) {
+    if (!globalHistoricalData || !chartInstance) {
+        return;
+    }
+
+    try {
+        // Convert historical data to format expected by time windows
+        const priceData = [];
+        for (let i = 0; i < globalHistoricalData.prices.length; i++) {
+            const date = new Date(globalHistoricalData.start);
+            date.setDate(date.getDate() + i);
+            priceData.push({
+                date: date,
+                price: globalHistoricalData.prices[i]
+            });
+        }
+
+        let filteredData;
+        
+        if (timeWindow === 'all') {
+            filteredData = priceData;
+        } else {
+            // Filter data based on time window
+            const windowConfig = TIME_WINDOWS[timeWindow];
+            if (!windowConfig) {
+                console.warn(`Invalid time window: ${timeWindow}`);
+                return;
+            }
+
+            const currentDate = new Date();
+            let startDate;
+            
+            if (windowConfig.type === 'calendar' || windowConfig.type === 'daily') {
+                startDate = getCalendarStartDate(timeWindow, currentDate);
+            } else {
+                startDate = new Date(currentDate);
+                startDate.setDate(startDate.getDate() - windowConfig.days);
+            }
+            
+            filteredData = priceData.filter(item => new Date(item.date) >= startDate);
+        }
+
+        // Update chart with filtered data
+        updateChart(filteredData, globalBtcAmount, timeWindow);
+        
+    } catch (error) {
+        console.warn('Failed to update chart:', error);
+    }
 }
 
 /**
@@ -208,8 +264,8 @@ function updatePortfolioMetricsForTimeWindow(timeWindow) {
             const currentDate = new Date();
             let startDate;
             
-            if (windowConfig.type === 'calendar') {
-                // Calendar-based time windows (WTD, MTD, YTD)
+            if (windowConfig.type === 'calendar' || windowConfig.type === 'daily') {
+                // Calendar-based time windows (1D, WTD, MTD, YTD)
                 startDate = getCalendarStartDate(timeWindow, currentDate);
             } else {
                 // Fixed day windows (7d, 30d, etc.)
@@ -323,6 +379,7 @@ function handleTimeWindowClick(event) {
             currentTimeWindow = newTimeWindow;
             updateTimeWindowButtons(currentTimeWindow);
             updatePortfolioMetricsForTimeWindow(currentTimeWindow);
+            updateChartForTimeWindow(currentTimeWindow);
             
             // Update URL with new time window
             updateUrl(globalBtcAmount, currentTimeWindow);
@@ -397,11 +454,29 @@ async function init() {
         // Update display
         updateDisplay(btcAmount, finalCurrentPrice, finalHistoricalData);
         
+        // Initialize chart
+        try {
+            chartInstance = initChart('price-chart');
+            // Update chart with data after initialization
+            if (finalHistoricalData) {
+                updateChartForTimeWindow(currentTimeWindow);
+            }
+        } catch (error) {
+            console.warn('Failed to initialize chart:', error);
+        }
+        
         // Setup time window button event listeners
         const timeWindowButtons = document.querySelector('.time-window-buttons');
         if (timeWindowButtons) {
             timeWindowButtons.addEventListener('click', handleTimeWindowClick);
         }
+        
+        // Add window resize listener for chart responsiveness
+        window.addEventListener('resize', () => {
+            if (chartInstance) {
+                resizeChart();
+            }
+        });
         
     } catch (error) {
         console.error('Failed to initialize app:', error);

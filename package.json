@@ -1,0 +1,49 @@
+{
+  "name": "bitcoin-portfolio-tracker",
+  "version": "1.0.0",
+  "description": "Single-page HTML Bitcoin portfolio visualizer",
+  "private": true,
+  "scripts": {
+    "dev": "live-server --port=8080 --open=index.html --cors",
+    "serve": "live-server --port=8080 --open=index.html --cors",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "fetch-prices": "node scripts/fetch-prices.js",
+    "fetch-prices:verbose": "node scripts/fetch-prices.js --verbose",
+    "fetch-prices:year": "node scripts/fetch-prices.js --days=365",
+    "test-fetch": "node scripts/test-fetch.js",
+    "convert-s2f": "node scripts/convert-s2f.js",
+    "test-btc-data": "node scripts/test-btc-data.js",
+    "test-historical": "node scripts/test-historical-loader.js"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "live-server": "^1.2.0"
+  },
+  "type": "module",
+  "jest": {
+    "testEnvironment": "jsdom",
+    "transform": {
+      "^.+\\.js$": "babel-jest"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(.*\\.mjs$))"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
+  },
+  "keywords": [
+    "bitcoin",
+    "portfolio",
+    "cryptocurrency",
+    "tracker"
+  ],
+  "author": "",
+  "license": "MIT"
+}

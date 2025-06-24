@@ -1,13 +1,107 @@
-This project is a single-page HTML visualizer of BTC portfolio worth over time.
-It only tracks BTC - no other asset. 
-The main display is a line chart showing the value of the portfolio in USD over time. The minimum resolution is days based on the closing price of BTCUSD at that time.
-The amount of BTC held is configurable as a URL parameter. No need for local storage.
-The design should be sleek and minimal. Dark mode should be the default. The line in the chart should be in bitcoin-orange.
-The user can choose the time window: 1d, this week, 7d, This month, 30d, 3 months, 6 months, this year (YTD), 1Y, 5Y, ALL
-Based on the time window chosen the page also display in large bold number boxes: Total Percent gained, Total USD gained, CAGR
+# Bitcoin Portfolio Tracker
 
-Phase 1:
-Visualizing the portfolio as if the amount of BTC held was purchased on the first day of historical price data. For simplicity's sake.
+A sleek, minimal single-page application that visualizes your Bitcoin portfolio performance over time. Track your BTC holdings with real-time pricing and historical data analysis.
 
-Phase 2:
-User should be able to add trades: purchases and sales of bitcoin at given dates, based on the known price on that date. This should allow to calculate gains more accurately over the portfolio's lifetime.
+## Features
+
+- 📊 **Real-time Bitcoin pricing** with smart caching
+- 📈 **Historical portfolio tracking** with 10+ years of price data
+- ⚡ **Fast loading** with optimized data storage
+- 🌙 **Dark theme** with Bitcoin orange accents
+- 📱 **Responsive design** for all devices
+- 🔧 **Configurable portfolio size** via URL parameters
+
+### Coming Soon
+- 📊 Interactive charts and visualizations
+- 📅 Multiple time windows (1d, 7d, 30d, 3mo, 6mo, 1y, 5y, all)
+- 💰 Advanced metrics (Total % gained, Total USD gained, CAGR)
+- 🔄 Trade tracking with buy/sell dates
+
+## Quick Start
+
+### Option 1: Development Server (Recommended)
+```bash
+# Clone or download the project
+git clone [repository-url]
+cd gainz
+
+# Start development server
+make dev
+```
+
+This will install dependencies and open the app at `http://localhost:8080`
+
+### Option 2: Direct File Access
+Simply open `index.html` in your web browser. Note: Some features may not work due to CORS restrictions.
+
+## Usage
+
+### Basic Usage
+Open the app to see your 1 BTC portfolio value with current Bitcoin pricing.
+
+### Custom Portfolio Size
+Add a `btc` parameter to the URL to specify your portfolio size:
+- `?btc=2.5` - Track 2.5 BTC
+- `?btc=0.1` - Track 0.1 BTC (100,000 sats)
+
+Examples:
+- `http://localhost:8080?btc=2.5`
+- `http://localhost:8080?btc=0.05`
+
+## Development
+
+### Available Commands
+```bash
+make dev           # Start development server
+make test          # Run unit tests
+make test-watch    # Run tests in watch mode
+make test-coverage # Generate test coverage report
+make clean         # Clean dependencies
+make help          # Show all commands
+```
+
+### Project Structure
+```
+gainz/
+├── index.html              # Main application
+├── btc-prices.json         # Historical price data
+├── js/
+│   ├── data/               # Data services
+│   ├── business/           # Business logic (coming soon)
+│   ├── ui/                 # UI components (coming soon)
+│   └── app.js             # Main coordinator
+├── css/
+│   └── style.css          # Styling
+└── tests/                 # Unit tests
+```
+
+## Technical Details
+
+- **Pure JavaScript** with ES6 modules
+- **No build step required** for production
+- **CoinGecko API** for real-time and historical Bitcoin prices
+- **Smart caching** (1-minute cache for current prices)
+- **Optimized data format** (75% smaller than standard JSON)
+- **Comprehensive test coverage** with Jest
+
+## Data Sources
+
+- **Current prices**: CoinGecko API (free tier, no authentication required)
+- **Historical data**: Pre-loaded JSON file updated daily via GitHub Actions
+- **Price history**: Daily closing prices from 2014 to present
+
+## Browser Support
+
+Modern browsers with ES6 module support:
+- Chrome 61+
+- Firefox 60+
+- Safari 10.1+
+- Edge 16+
+
+## Contributing
+
+For development details and technical documentation, see [CLAUDE.md](CLAUDE.md).
+
+## License
+
+MIT License - see project files for details.

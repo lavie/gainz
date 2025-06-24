@@ -1,0 +1,324 @@
+/* Bitcoin Portfolio Tracker - Dark Theme */
+:root {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --bitcoin-orange: #f7931a;
+    --border-color: #444444;
+    --error-color: #ff6b6b;
+    --positive-color: #4ade80;
+    --negative-color: #f87171;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--bitcoin-orange);
+    margin-bottom: 0.5rem;
+}
+
+.portfolio-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.portfolio-info > div {
+    background-color: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.portfolio-info h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem;
+}
+
+.portfolio-info > div > div {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+#btc-amount-display {
+    color: var(--bitcoin-orange);
+}
+
+#current-price-display,
+#portfolio-value-display {
+    color: var(--text-primary);
+}
+
+.portfolio-value {
+    grid-column: 1 / -1;
+}
+
+#portfolio-value-display {
+    font-size: 2rem;
+    color: var(--bitcoin-orange);
+}
+
+.status {
+    background-color: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+}
+
+#status-display {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+#status-display.error {
+    color: var(--error-color);
+    font-weight: 600;
+}
+
+/* Portfolio Metrics */
+.portfolio-metrics {
+    margin: 3rem 0;
+}
+
+.portfolio-metrics h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.metric-card {
+    background-color: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.metric-card h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem;
+}
+
+.metric-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.metric-value.positive {
+    color: var(--positive-color);
+}
+
+.metric-value.negative {
+    color: var(--negative-color);
+}
+
+.metric-value.loading {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.metric-value.error {
+    color: var(--error-color);
+}
+
+/* Time Window Selection */
+.time-window-selection {
+    margin: 2rem 0;
+    text-align: center;
+}
+
+.time-window-selection h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+}
+
+.time-window-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.time-window-btn {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 50px;
+}
+
+.time-window-btn:hover:not(:disabled) {
+    background-color: var(--bitcoin-orange);
+    color: var(--bg-primary);
+    border-color: var(--bitcoin-orange);
+    transform: translateY(-1px);
+}
+
+.time-window-btn.active {
+    background-color: var(--bitcoin-orange);
+    color: var(--bg-primary);
+    border-color: var(--bitcoin-orange);
+}
+
+.time-window-btn:disabled {
+    background-color: var(--bg-secondary);
+    color: var(--border-color);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.time-window-btn:focus {
+    outline: 2px solid var(--bitcoin-orange);
+    outline-offset: 2px;
+}
+
+/* Notifications */
+.notification {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.notification-info {
+    border-color: var(--bitcoin-orange);
+    color: var(--bitcoin-orange);
+}
+
+.notification-warning {
+    border-color: #fbbf24;
+    color: #fbbf24;
+}
+
+.notification-error {
+    border-color: var(--error-color);
+    color: var(--error-color);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem 0.5rem;
+    }
+    
+    header h1 {
+        font-size: 2rem;
+    }
+    
+    .portfolio-info {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .portfolio-info > div {
+        padding: 1rem;
+    }
+    
+    .portfolio-info > div > div {
+        font-size: 1.25rem;
+    }
+    
+    #portfolio-value-display {
+        font-size: 1.75rem;
+    }
+    
+    .metrics-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+    
+    .metric-card {
+        padding: 1rem;
+    }
+    
+    .metric-value {
+        font-size: 1.1rem;
+    }
+    
+    .time-window-buttons {
+        gap: 0.25rem;
+    }
+    
+    .time-window-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+        min-width: 40px;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.75rem;
+    }
+    
+    .portfolio-info > div > div {
+        font-size: 1.1rem;
+    }
+    
+    #portfolio-value-display {
+        font-size: 1.5rem;
+    }
+    
+    .time-window-btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.75rem;
+        min-width: 35px;
+    }
+}

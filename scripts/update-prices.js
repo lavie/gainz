@@ -342,7 +342,7 @@ async function writeUpdatedData(data, cacheFilePath, verbose = false) {
         }
         
         // Write updated data
-        const jsonContent = JSON.stringify(data, null, 2);
+        const jsonContent = JSON.stringify(data);
         await fs.writeFile(cacheFilePath, jsonContent, 'utf8');
         
         if (verbose) {

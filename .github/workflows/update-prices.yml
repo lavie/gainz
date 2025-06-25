@@ -1,43 +1,26 @@
-name: Update Bitcoin Price Data
+name: Update Bitcoin Prices
 
 on:
-  # Run daily at 00:30 UTC (after markets close)
   schedule:
+    # Run daily at 00:30 UTC (after global markets close)
     - cron: '30 0 * * *'
   
-  # Allow manual triggering
+  # Allow manual triggering for testing
   workflow_dispatch:
-    inputs:
-      days:
-        description: 'Number of days to fetch (default: max)'
-        required: false
-        default: 'max'
-        type: choice
-        options:
-          - 'max'
-          - '365'
-          - '180'
-          - '90'
-          - '30'
-          - '7'
-      verbose:
-        description: 'Enable verbose logging'
-        required: false
-        default: false
-        type: boolean
+
+permissions:
+  contents: write  # Required for committing changes
 
 jobs:
   update-prices:
     runs-on: ubuntu-latest
     
-    permissions:
-      contents: write
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use full history to ensure proper git operations
+          fetch-depth: 0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -48,108 +31,105 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Fetch Bitcoin price data
-        run: |
-          DAYS="${{ github.event.inputs.days || 'max' }}"
-          VERBOSE="${{ github.event.inputs.verbose == 'true' && '--verbose' || '' }}"
-          
-          echo "🚀 Fetching Bitcoin price data..."
-          echo "   Days: $DAYS"
-          echo "   Verbose: ${{ github.event.inputs.verbose }}"
-          
-          node scripts/fetch-prices.js --days="$DAYS" $VERBOSE
-        env:
-          NODE_ENV: production
-      
-      - name: Check for changes
-        id: check-changes
-        run: |
-          if git diff --quiet btc-prices.json; then
-            echo "No changes detected in btc-prices.json"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          else
-            echo "Changes detected in btc-prices.json"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            
-            # Get file size for logging
-            FILE_SIZE=$(stat -c%s btc-prices.json)
-            echo "File size: $FILE_SIZE bytes"
-            echo "file_size=$FILE_SIZE" >> $GITHUB_OUTPUT
-            
-            # Get price info from JSON
-            LATEST_PRICE=$(node -e "
-              const fs = require('fs');
-              const data = JSON.parse(fs.readFileSync('btc-prices.json', 'utf8'));
-              const latestPrice = data.prices[data.prices.length - 1];
-              console.log(latestPrice);
-            ")
-            echo "Latest price: \$${LATEST_PRICE}"
-            echo "latest_price=$LATEST_PRICE" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Commit and push changes
-        if: steps.check-changes.outputs.has_changes == 'true'
+      - name: Configure git
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+      
+      - name: Update Bitcoin price data
+        id: update
+        run: |
+          echo "Checking for missing Bitcoin price data..."
           
-          # Add the updated file
+          # Store the current state of btc-prices.json
+          if [ -f "btc-prices.json" ]; then
+            cp btc-prices.json btc-prices.json.before
+          fi
+          
+          # Run the update script
+          make update-prices
+          
+          # Check if the file was modified
+          if [ -f "btc-prices.json.before" ]; then
+            if cmp -s "btc-prices.json" "btc-prices.json.before"; then
+              echo "No changes to btc-prices.json"
+              echo "changed=false" >> $GITHUB_OUTPUT
+            else
+              echo "btc-prices.json was updated"
+              echo "changed=true" >> $GITHUB_OUTPUT
+            fi
+            rm -f btc-prices.json.before
+          else
+            echo "btc-prices.json was created"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Extract price info for commit message
+        if: steps.update.outputs.changed == 'true'
+        id: price_info
+        run: |
+          # Extract latest price and date info from the JSON file
+          latest_price=$(node -e "
+            const data = JSON.parse(require('fs').readFileSync('btc-prices.json', 'utf8'));
+            const latestPrice = data.prices[data.prices.length - 1];
+            console.log(latestPrice.toLocaleString());
+          ")
+          
+          data_points=$(node -e "
+            const data = JSON.parse(require('fs').readFileSync('btc-prices.json', 'utf8'));
+            console.log(data.prices.length);
+          ")
+          
+          end_date=$(node -e "
+            const data = JSON.parse(require('fs').readFileSync('btc-prices.json', 'utf8'));
+            const startDate = new Date(data.start + 'T00:00:00.000Z');
+            const endDate = new Date(startDate);
+            endDate.setUTCDate(endDate.getUTCDate() + data.prices.length - 1);
+            console.log(endDate.toISOString().split('T')[0]);
+          ")
+          
+          echo "latest_price=$latest_price" >> $GITHUB_OUTPUT
+          echo "data_points=$data_points" >> $GITHUB_OUTPUT
+          echo "end_date=$end_date" >> $GITHUB_OUTPUT
+      
+      - name: Commit and push changes
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Add only the btc-prices.json file
           git add btc-prices.json
           
           # Create commit message with price info
-          COMMIT_MSG="Update Bitcoin price data - \$${LATEST_PRICE}
+          commit_message="Update Bitcoin prices - Latest: \$${latest_price} (${end_date})
 
-          📊 Updated Bitcoin historical price data
-          💰 Latest price: \$${LATEST_PRICE}
-          📅 Updated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          📁 File size: ${FILE_SIZE} bytes
-          🤖 Automated update via GitHub Actions"
+          📊 Updated Bitcoin price data
+          🔢 Total data points: ${data_points}
+          📅 Latest date: ${end_date}
+          💰 Latest price: \$${latest_price}
           
-          git commit -m "$COMMIT_MSG"
+          🤖 Generated with [Claude Code](https://claude.ai/code)
+          
+          Co-Authored-By: Claude <noreply@anthropic.com>"
+          
+          git commit -m "$commit_message"
           git push
         env:
-          LATEST_PRICE: ${{ steps.check-changes.outputs.latest_price }}
-          FILE_SIZE: ${{ steps.check-changes.outputs.file_size }}
+          latest_price: ${{ steps.price_info.outputs.latest_price }}
+          data_points: ${{ steps.price_info.outputs.data_points }}
+          end_date: ${{ steps.price_info.outputs.end_date }}
       
-      - name: Create summary
+      - name: Summary
         run: |
-          echo "## Bitcoin Price Data Update Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ steps.check-changes.outputs.has_changes }}" = "true" ]; then
-            echo "✅ **Success**: Bitcoin price data updated successfully" >> $GITHUB_STEP_SUMMARY
-            echo "💰 **Latest Price**: \$${LATEST_PRICE}" >> $GITHUB_STEP_SUMMARY
-            echo "📁 **File Size**: ${FILE_SIZE} bytes" >> $GITHUB_STEP_SUMMARY
-            echo "📅 **Updated**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.update.outputs.changed }}" == "true" ]; then
+            echo "✅ Bitcoin price data updated successfully"
+            echo "📈 Latest price: \$${latest_price}"
+            echo "📊 Total data points: ${data_points}"
+            echo "📅 Data current through: ${end_date}"
           else
-            echo "ℹ️ **No Changes**: Price data is already up to date" >> $GITHUB_STEP_SUMMARY
+            echo "✅ Bitcoin price data is already up to date"
           fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Configuration" >> $GITHUB_STEP_SUMMARY
-          echo "- **Days Requested**: ${{ github.event.inputs.days || 'max' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Verbose Logging**: ${{ github.event.inputs.verbose || 'false' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
         env:
-          LATEST_PRICE: ${{ steps.check-changes.outputs.latest_price }}
-          FILE_SIZE: ${{ steps.check-changes.outputs.file_size }}
-      
-      - name: Handle errors
-        if: failure()
-        run: |
-          echo "## ❌ Bitcoin Price Data Update Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The automated price data update failed. Please check the logs above for details." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Troubleshooting" >> $GITHUB_STEP_SUMMARY
-          echo "- Verify CoinGecko API is accessible" >> $GITHUB_STEP_SUMMARY
-          echo "- Check rate limits (max 30 requests/minute for free tier)" >> $GITHUB_STEP_SUMMARY
-          echo "- Ensure repository has write permissions" >> $GITHUB_STEP_SUMMARY
-          echo "- Review script logs for specific error messages" >> $GITHUB_STEP_SUMMARY
-          
-          # Try to provide more diagnostic info
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Diagnostic Information" >> $GITHUB_STEP_SUMMARY
-          echo "- **Workflow**: ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Run ID**: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Timestamp**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          latest_price: ${{ steps.price_info.outputs.latest_price }}
+          data_points: ${{ steps.price_info.outputs.data_points }}
+          end_date: ${{ steps.price_info.outputs.end_date }}

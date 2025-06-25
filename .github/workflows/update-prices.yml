@@ -18,9 +18,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          # Use full history to ensure proper git operations
-          fetch-depth: 0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,8 +43,11 @@ jobs:
             cp btc-prices.json btc-prices.json.before
           fi
           
-          # Run the update script
-          make update-prices
+          # Run the update script with error handling
+          if ! make update-prices; then
+            echo "❌ Make update-prices failed"
+            exit 1
+          fi
           
           # Check if the file was modified
           if [ -f "btc-prices.json.before" ]; then
@@ -68,24 +68,45 @@ jobs:
         if: steps.update.outputs.changed == 'true'
         id: price_info
         run: |
-          # Extract latest price and date info from the JSON file
+          # Extract latest price and date info from the JSON file with error handling
+          if [ ! -f "btc-prices.json" ]; then
+            echo "❌ btc-prices.json not found"
+            exit 1
+          fi
+          
           latest_price=$(node -e "
-            const data = JSON.parse(require('fs').readFileSync('btc-prices.json', 'utf8'));
-            const latestPrice = data.prices[data.prices.length - 1];
-            console.log(latestPrice.toLocaleString());
+            try {
+              const data = JSON.parse(require('fs').readFileSync('btc-prices.json', 'utf8'));
+              if (!data.prices || data.prices.length === 0) throw new Error('No prices found');
+              const latestPrice = data.prices[data.prices.length - 1];
+              console.log(latestPrice.toLocaleString());
+            } catch (error) {
+              console.error('Error extracting latest price:', error.message);
+              process.exit(1);
+            }
           ")
           
           data_points=$(node -e "
-            const data = JSON.parse(require('fs').readFileSync('btc-prices.json', 'utf8'));
-            console.log(data.prices.length);
+            try {
+              const data = JSON.parse(require('fs').readFileSync('btc-prices.json', 'utf8'));
+              console.log(data.prices.length);
+            } catch (error) {
+              console.error('Error extracting data points:', error.message);
+              process.exit(1);
+            }
           ")
           
           end_date=$(node -e "
-            const data = JSON.parse(require('fs').readFileSync('btc-prices.json', 'utf8'));
-            const startDate = new Date(data.start + 'T00:00:00.000Z');
-            const endDate = new Date(startDate);
-            endDate.setUTCDate(endDate.getUTCDate() + data.prices.length - 1);
-            console.log(endDate.toISOString().split('T')[0]);
+            try {
+              const data = JSON.parse(require('fs').readFileSync('btc-prices.json', 'utf8'));
+              const startDate = new Date(data.start + 'T00:00:00.000Z');
+              const endDate = new Date(startDate);
+              endDate.setUTCDate(endDate.getUTCDate() + data.prices.length - 1);
+              console.log(endDate.toISOString().split('T')[0]);
+            } catch (error) {
+              console.error('Error extracting end date:', error.message);
+              process.exit(1);
+            }
           ")
           
           echo "latest_price=$latest_price" >> $GITHUB_OUTPUT
@@ -96,6 +117,9 @@ jobs:
         if: steps.update.outputs.changed == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          latest_price: ${{ steps.price_info.outputs.latest_price }}
+          data_points: ${{ steps.price_info.outputs.data_points }}
+          end_date: ${{ steps.price_info.outputs.end_date }}
         run: |
           # Add only the btc-prices.json file
           git add btc-prices.json
@@ -114,18 +138,14 @@ jobs:
           
           git commit -m "$commit_message"
           git push
-        env:
-          latest_price: ${{ steps.price_info.outputs.latest_price }}
-          data_points: ${{ steps.price_info.outputs.data_points }}
-          end_date: ${{ steps.price_info.outputs.end_date }}
       
       - name: Summary
         run: |
           if [ "${{ steps.update.outputs.changed }}" == "true" ]; then
             echo "✅ Bitcoin price data updated successfully"
-            echo "📈 Latest price: \$${latest_price}"
-            echo "📊 Total data points: ${data_points}"
-            echo "📅 Data current through: ${end_date}"
+            echo "📈 Latest price: \$${latest_price:-'N/A'}"
+            echo "📊 Total data points: ${data_points:-'N/A'}"
+            echo "📅 Data current through: ${end_date:-'N/A'}"
           else
             echo "✅ Bitcoin price data is already up to date"
           fi

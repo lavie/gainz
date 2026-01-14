@@ -474,6 +474,25 @@ body.candlez .container {
     min-height: 100vh;
 }
 
+body.candlez .chart-section {
+    flex: 0 0 auto;
+}
+
+body.candlez .chart-container {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+}
+
+.histogram-area {
+    height: 360px;
+}
+
+#candlez-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
 .candlez-header {
     text-align: center;
 }
@@ -575,6 +594,90 @@ body.candlez .container {
     text-align: center;
 }
 
+.range-section {
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.8rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    position: relative;
+}
+
+.range-header {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.range-chart {
+    position: relative;
+    height: 56px;
+    border-radius: 8px;
+    background-color: #1f1f1f;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.range-chart canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.range-shade {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+}
+
+.range-shade.left {
+    left: 0;
+}
+
+.range-shade.right {
+    right: 0;
+}
+
+.range-selection {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border: 1px solid rgba(247, 147, 26, 0.7);
+    background: rgba(247, 147, 26, 0.08);
+    box-shadow: 0 0 0 1px rgba(247, 147, 26, 0.1);
+}
+
+.range-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 12px;
+    background: rgba(247, 147, 26, 0.9);
+    border-radius: 6px;
+    box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.9);
+    cursor: ew-resize;
+}
+
+.range-handle.left {
+    left: -6px;
+}
+
+.range-handle.right {
+    right: -6px;
+}
+
+.range-endpoints {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
 .candlez-status {
     color: var(--error-color);
     text-align: center;
@@ -584,5 +687,17 @@ body.candlez .container {
 @media (max-width: 900px) {
     .stats-card {
         max-width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .histogram-area {
+        height: 260px;
+    }
+}
+
+@media (max-width: 480px) {
+    .histogram-area {
+        height: 220px;
     }
 }

@@ -34,12 +34,14 @@ function formatCompactPercent(value) {
     return `${value.toFixed(maxFractionDigits)}%`;
 }
 
-function computeCandleSizes(prices, unit) {
+function computeCandleSizes(prices, unit, startIndex, endIndex) {
     const red = [];
     const green = [];
     let flat = 0;
+    const start = Math.max(0, startIndex ?? 0);
+    const end = Math.min(prices.length - 1, endIndex ?? prices.length - 1);
 
-    for (let i = 1; i < prices.length; i += 1) {
+    for (let i = Math.max(1, start + 1); i <= end; i += 1) {
         const prev = prices[i - 1];
         const curr = prices[i];
         if (curr === prev) {
@@ -237,7 +239,9 @@ function formatStatsValue(value, unit) {
 function renderForUnit(unit) {
     if (!cachedData) return;
 
-    const { red, green, flat } = computeCandleSizes(cachedData.prices, unit);
+    const rangeStart = rangeState.startIndex;
+    const rangeEnd = rangeState.endIndex;
+    const { red, green, flat } = computeCandleSizes(cachedData.prices, unit, rangeStart, rangeEnd);
     const { binEdges, counts: redCounts } = buildLogHistogram(red, BIN_COUNT);
     const { counts: greenCounts } = buildLogHistogram(green, BIN_COUNT);
     const labels = buildBinLabels(binEdges, unit);
@@ -264,6 +268,190 @@ function renderForUnit(unit) {
     updateToggleButtons(unit);
 }
 
+const rangeState = {
+    startIndex: 0,
+    endIndex: 0
+};
+
+const rangeElements = {
+    chart: null,
+    selection: null,
+    shadeLeft: null,
+    shadeRight: null,
+    handleLeft: null,
+    handleRight: null
+};
+
+function formatRangeLabel(startIndex, endIndex) {
+    if (!cachedData) return '--';
+    const startDate = calculateDate(cachedData.start, startIndex);
+    const endDate = calculateDate(cachedData.start, endIndex);
+    return `${startDate} → ${endDate}`;
+}
+
+function updateRangeSelectionUI() {
+    if (!rangeElements.selection || !rangeElements.shadeLeft || !rangeElements.shadeRight || !cachedData) return;
+    const maxIndex = cachedData.prices.length - 1;
+    const startRatio = maxIndex > 0 ? rangeState.startIndex / maxIndex : 0;
+    const endRatio = maxIndex > 0 ? rangeState.endIndex / maxIndex : 1;
+
+    const startPercent = Math.max(0, Math.min(100, startRatio * 100));
+    const endPercent = Math.max(0, Math.min(100, endRatio * 100));
+    const widthPercent = Math.max(0, endPercent - startPercent);
+
+    rangeElements.selection.style.left = `${startPercent}%`;
+    rangeElements.selection.style.width = `${widthPercent}%`;
+    rangeElements.shadeLeft.style.width = `${startPercent}%`;
+    rangeElements.shadeRight.style.width = `${100 - endPercent}%`;
+}
+
+function updateRangeUI() {
+    if (!cachedData) return;
+    setText('range-display', formatRangeLabel(rangeState.startIndex, rangeState.endIndex));
+    updateRangeSelectionUI();
+}
+
+function renderRangeChart() {
+    if (!rangeElements.chart || !cachedData) return;
+    const canvas = rangeElements.chart;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+
+    ctx.clearRect(0, 0, rect.width, rect.height);
+
+    const prices = cachedData.prices;
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const padding = 6;
+    const width = rect.width;
+    const height = rect.height;
+
+    ctx.beginPath();
+    prices.forEach((price, index) => {
+        const x = (index / (prices.length - 1)) * width;
+        const y = height - padding - ((price - min) / (max - min || 1)) * (height - padding * 2);
+        if (index === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    });
+
+    ctx.lineTo(width, height - padding);
+    ctx.lineTo(0, height - padding);
+    ctx.closePath();
+
+    const gradient = ctx.createLinearGradient(0, padding, 0, height - padding);
+    gradient.addColorStop(0, 'rgba(74, 222, 128, 0.25)');
+    gradient.addColorStop(1, 'rgba(74, 222, 128, 0.02)');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+
+    prices.forEach((price, index) => {
+        const x = (index / (prices.length - 1)) * width;
+        const y = height - padding - ((price - min) / (max - min || 1)) * (height - padding * 2);
+        if (index === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    });
+
+    ctx.stroke();
+}
+
+function bindRangeControls() {
+    rangeElements.chart = document.getElementById('range-chart');
+    rangeElements.selection = document.getElementById('range-selection');
+    rangeElements.shadeLeft = document.getElementById('range-shade-left');
+    rangeElements.shadeRight = document.getElementById('range-shade-right');
+    if (rangeElements.selection) {
+        rangeElements.handleLeft = rangeElements.selection.querySelector('.range-handle.left');
+        rangeElements.handleRight = rangeElements.selection.querySelector('.range-handle.right');
+    }
+
+    if (!cachedData) return;
+
+    const maxIndex = cachedData.prices.length - 1;
+    rangeState.startIndex = 0;
+    rangeState.endIndex = maxIndex;
+
+    setText('range-min', cachedData.start);
+    setText('range-max', calculateDate(cachedData.start, maxIndex));
+    updateRangeUI();
+    renderRangeChart();
+
+    let activeHandle = null;
+
+    const toIndex = (clientX) => {
+        if (!rangeElements.chart) return 0;
+        const rect = rangeElements.chart.getBoundingClientRect();
+        const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
+        const ratio = rect.width > 0 ? x / rect.width : 0;
+        return Math.round(ratio * maxIndex);
+    };
+
+    const moveHandle = (index, handle) => {
+        if (handle === 'left') {
+            rangeState.startIndex = Math.min(index, rangeState.endIndex);
+        } else {
+            rangeState.endIndex = Math.max(index, rangeState.startIndex);
+        }
+        updateRangeUI();
+        renderForUnit(currentUnit);
+    };
+
+    const attachHandle = (handle, name) => {
+        if (!handle) return;
+        handle.addEventListener('pointerdown', (event) => {
+            activeHandle = name;
+            handle.setPointerCapture(event.pointerId);
+        });
+        handle.addEventListener('pointerup', () => {
+            activeHandle = null;
+        });
+    };
+
+    attachHandle(rangeElements.handleLeft, 'left');
+    attachHandle(rangeElements.handleRight, 'right');
+
+    window.addEventListener('pointermove', (event) => {
+        if (!activeHandle) return;
+        moveHandle(toIndex(event.clientX), activeHandle);
+    });
+
+    window.addEventListener('pointerup', () => {
+        activeHandle = null;
+    });
+
+    if (rangeElements.chart) {
+        rangeElements.chart.addEventListener('click', (event) => {
+            const index = toIndex(event.clientX);
+            const distToStart = Math.abs(index - rangeState.startIndex);
+            const distToEnd = Math.abs(index - rangeState.endIndex);
+            moveHandle(index, distToStart <= distToEnd ? 'left' : 'right');
+        });
+    }
+
+    window.addEventListener('resize', () => {
+        renderRangeChart();
+        updateRangeSelectionUI();
+    });
+}
+
+let currentUnit = UNIT_USD;
+
 async function initCandlez() {
     try {
         cachedData = await loadHistoricalData();
@@ -271,12 +459,13 @@ async function initCandlez() {
 
         document.querySelectorAll('.toggle-btn').forEach((button) => {
             button.addEventListener('click', () => {
-                const unit = button.dataset.unit === UNIT_PERCENT ? UNIT_PERCENT : UNIT_USD;
-                renderForUnit(unit);
+                currentUnit = button.dataset.unit === UNIT_PERCENT ? UNIT_PERCENT : UNIT_USD;
+                renderForUnit(currentUnit);
             });
         });
 
-        renderForUnit(UNIT_USD);
+        bindRangeControls();
+        renderForUnit(currentUnit);
     } catch (error) {
         console.error('Failed to initialize candle histogram:', error);
         setText('candlez-status', 'Failed to load data. Check the console for details.');

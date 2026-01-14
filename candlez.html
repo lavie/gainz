@@ -28,7 +28,28 @@
 
             <section class="chart-section">
                 <div class="chart-container">
-                    <canvas id="candlez-chart"></canvas>
+                    <div class="histogram-area">
+                        <canvas id="candlez-chart"></canvas>
+                    </div>
+                    <section class="range-section" aria-label="Date range">
+                        <div class="range-header">
+                            <span>Date range</span>
+                            <span id="range-display">--</span>
+                        </div>
+                        <div class="range-chart">
+                            <canvas id="range-chart"></canvas>
+                            <div class="range-shade left" id="range-shade-left"></div>
+                            <div class="range-shade right" id="range-shade-right"></div>
+                            <div class="range-selection" id="range-selection">
+                                <span class="range-handle left" data-handle="left" role="slider" aria-label="Start handle"></span>
+                                <span class="range-handle right" data-handle="right" role="slider" aria-label="End handle"></span>
+                            </div>
+                        </div>
+                        <div class="range-endpoints">
+                            <span id="range-min">--</span>
+                            <span id="range-max">--</span>
+                        </div>
+                    </section>
                 </div>
             </section>
 

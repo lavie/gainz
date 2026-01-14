@@ -476,7 +476,6 @@ let currentUnit = UNIT_USD;
 async function initCandlez() {
     try {
         cachedData = await loadHistoricalData();
-        setText('data-range', `${cachedData.start} → ${calculateDate(cachedData.start, cachedData.prices.length - 1)}`);
 
         document.querySelectorAll('.toggle-btn').forEach((button) => {
             button.addEventListener('click', () => {

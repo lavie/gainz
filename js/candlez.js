@@ -393,6 +393,8 @@ function bindRangeControls() {
     renderRangeChart();
 
     let activeHandle = null;
+    let dragAnchorIndex = 0;
+    let dragRangeSize = 0;
 
     const toIndex = (clientX) => {
         if (!rangeElements.chart) return 0;
@@ -403,7 +405,11 @@ function bindRangeControls() {
     };
 
     const moveHandle = (index, handle) => {
-        if (handle === 'left') {
+        if (handle === 'range') {
+            const clampedStart = Math.min(Math.max(index - dragAnchorIndex, 0), maxIndex - dragRangeSize);
+            rangeState.startIndex = clampedStart;
+            rangeState.endIndex = clampedStart + dragRangeSize;
+        } else if (handle === 'left') {
             rangeState.startIndex = Math.min(index, rangeState.endIndex);
         } else {
             rangeState.endIndex = Math.max(index, rangeState.startIndex);
@@ -417,6 +423,7 @@ function bindRangeControls() {
         handle.addEventListener('pointerdown', (event) => {
             activeHandle = name;
             handle.setPointerCapture(event.pointerId);
+            dragRangeSize = rangeState.endIndex - rangeState.startIndex;
         });
         handle.addEventListener('pointerup', () => {
             activeHandle = null;
@@ -425,6 +432,20 @@ function bindRangeControls() {
 
     attachHandle(rangeElements.handleLeft, 'left');
     attachHandle(rangeElements.handleRight, 'right');
+
+    if (rangeElements.selection) {
+        rangeElements.selection.addEventListener('pointerdown', (event) => {
+            if (event.target.classList.contains('range-handle')) return;
+            activeHandle = 'range';
+            rangeElements.selection.setPointerCapture(event.pointerId);
+            dragRangeSize = rangeState.endIndex - rangeState.startIndex;
+            const clickIndex = toIndex(event.clientX);
+            dragAnchorIndex = Math.min(Math.max(clickIndex - rangeState.startIndex, 0), dragRangeSize);
+        });
+        rangeElements.selection.addEventListener('pointerup', () => {
+            activeHandle = null;
+        });
+    }
 
     window.addEventListener('pointermove', (event) => {
         if (!activeHandle) return;

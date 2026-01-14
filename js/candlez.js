@@ -1,4 +1,5 @@
 import { loadHistoricalData, calculateDate } from './data/historicalData.js';
+import { createRangeSelector } from './ui/rangeSelector.js';
 
 const BIN_COUNT = 20;
 const UNIT_USD = 'usd';
@@ -273,203 +274,7 @@ const rangeState = {
     endIndex: 0
 };
 
-const rangeElements = {
-    chart: null,
-    selection: null,
-    shadeLeft: null,
-    shadeRight: null,
-    handleLeft: null,
-    handleRight: null
-};
-
-function formatRangeLabel(startIndex, endIndex) {
-    if (!cachedData) return '--';
-    const startDate = calculateDate(cachedData.start, startIndex);
-    const endDate = calculateDate(cachedData.start, endIndex);
-    return `${startDate} → ${endDate}`;
-}
-
-function updateRangeSelectionUI() {
-    if (!rangeElements.selection || !rangeElements.shadeLeft || !rangeElements.shadeRight || !cachedData) return;
-    const maxIndex = cachedData.prices.length - 1;
-    const startRatio = maxIndex > 0 ? rangeState.startIndex / maxIndex : 0;
-    const endRatio = maxIndex > 0 ? rangeState.endIndex / maxIndex : 1;
-
-    const startPercent = Math.max(0, Math.min(100, startRatio * 100));
-    const endPercent = Math.max(0, Math.min(100, endRatio * 100));
-    const widthPercent = Math.max(0, endPercent - startPercent);
-
-    rangeElements.selection.style.left = `${startPercent}%`;
-    rangeElements.selection.style.width = `${widthPercent}%`;
-    rangeElements.shadeLeft.style.width = `${startPercent}%`;
-    rangeElements.shadeRight.style.width = `${100 - endPercent}%`;
-}
-
-function updateRangeUI() {
-    if (!cachedData) return;
-    setText('range-display', formatRangeLabel(rangeState.startIndex, rangeState.endIndex));
-    updateRangeSelectionUI();
-}
-
-function renderRangeChart() {
-    if (!rangeElements.chart || !cachedData) return;
-    const canvas = rangeElements.chart;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(dpr, dpr);
-
-    ctx.clearRect(0, 0, rect.width, rect.height);
-
-    const prices = cachedData.prices;
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    const padding = 6;
-    const width = rect.width;
-    const height = rect.height;
-
-    ctx.beginPath();
-    prices.forEach((price, index) => {
-        const x = (index / (prices.length - 1)) * width;
-        const y = height - padding - ((price - min) / (max - min || 1)) * (height - padding * 2);
-        if (index === 0) {
-            ctx.moveTo(x, y);
-        } else {
-            ctx.lineTo(x, y);
-        }
-    });
-
-    ctx.lineTo(width, height - padding);
-    ctx.lineTo(0, height - padding);
-    ctx.closePath();
-
-    const gradient = ctx.createLinearGradient(0, padding, 0, height - padding);
-    gradient.addColorStop(0, 'rgba(74, 222, 128, 0.25)');
-    gradient.addColorStop(1, 'rgba(74, 222, 128, 0.02)');
-    ctx.fillStyle = gradient;
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(74, 222, 128, 0.9)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-
-    prices.forEach((price, index) => {
-        const x = (index / (prices.length - 1)) * width;
-        const y = height - padding - ((price - min) / (max - min || 1)) * (height - padding * 2);
-        if (index === 0) {
-            ctx.moveTo(x, y);
-        } else {
-            ctx.lineTo(x, y);
-        }
-    });
-
-    ctx.stroke();
-}
-
-function bindRangeControls() {
-    rangeElements.chart = document.getElementById('range-chart');
-    rangeElements.selection = document.getElementById('range-selection');
-    rangeElements.shadeLeft = document.getElementById('range-shade-left');
-    rangeElements.shadeRight = document.getElementById('range-shade-right');
-    if (rangeElements.selection) {
-        rangeElements.handleLeft = rangeElements.selection.querySelector('.range-handle.left');
-        rangeElements.handleRight = rangeElements.selection.querySelector('.range-handle.right');
-    }
-
-    if (!cachedData) return;
-
-    const maxIndex = cachedData.prices.length - 1;
-    rangeState.startIndex = 0;
-    rangeState.endIndex = maxIndex;
-
-    setText('range-min', cachedData.start);
-    setText('range-max', calculateDate(cachedData.start, maxIndex));
-    updateRangeUI();
-    renderRangeChart();
-
-    let activeHandle = null;
-    let dragAnchorIndex = 0;
-    let dragRangeSize = 0;
-
-    const toIndex = (clientX) => {
-        if (!rangeElements.chart) return 0;
-        const rect = rangeElements.chart.getBoundingClientRect();
-        const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
-        const ratio = rect.width > 0 ? x / rect.width : 0;
-        return Math.round(ratio * maxIndex);
-    };
-
-    const moveHandle = (index, handle) => {
-        if (handle === 'range') {
-            const clampedStart = Math.min(Math.max(index - dragAnchorIndex, 0), maxIndex - dragRangeSize);
-            rangeState.startIndex = clampedStart;
-            rangeState.endIndex = clampedStart + dragRangeSize;
-        } else if (handle === 'left') {
-            rangeState.startIndex = Math.min(index, rangeState.endIndex);
-        } else {
-            rangeState.endIndex = Math.max(index, rangeState.startIndex);
-        }
-        updateRangeUI();
-        renderForUnit(currentUnit);
-    };
-
-    const attachHandle = (handle, name) => {
-        if (!handle) return;
-        handle.addEventListener('pointerdown', (event) => {
-            activeHandle = name;
-            handle.setPointerCapture(event.pointerId);
-            dragRangeSize = rangeState.endIndex - rangeState.startIndex;
-        });
-        handle.addEventListener('pointerup', () => {
-            activeHandle = null;
-        });
-    };
-
-    attachHandle(rangeElements.handleLeft, 'left');
-    attachHandle(rangeElements.handleRight, 'right');
-
-    if (rangeElements.selection) {
-        rangeElements.selection.addEventListener('pointerdown', (event) => {
-            if (event.target.classList.contains('range-handle')) return;
-            activeHandle = 'range';
-            rangeElements.selection.setPointerCapture(event.pointerId);
-            dragRangeSize = rangeState.endIndex - rangeState.startIndex;
-            const clickIndex = toIndex(event.clientX);
-            dragAnchorIndex = Math.min(Math.max(clickIndex - rangeState.startIndex, 0), dragRangeSize);
-        });
-        rangeElements.selection.addEventListener('pointerup', () => {
-            activeHandle = null;
-        });
-    }
-
-    window.addEventListener('pointermove', (event) => {
-        if (!activeHandle) return;
-        moveHandle(toIndex(event.clientX), activeHandle);
-    });
-
-    window.addEventListener('pointerup', () => {
-        activeHandle = null;
-    });
-
-    if (rangeElements.chart) {
-        rangeElements.chart.addEventListener('click', (event) => {
-            const index = toIndex(event.clientX);
-            const distToStart = Math.abs(index - rangeState.startIndex);
-            const distToEnd = Math.abs(index - rangeState.endIndex);
-            moveHandle(index, distToStart <= distToEnd ? 'left' : 'right');
-        });
-    }
-
-    window.addEventListener('resize', () => {
-        renderRangeChart();
-        updateRangeSelectionUI();
-    });
-}
+let rangeSelector = null;
 
 let currentUnit = UNIT_USD;
 
@@ -484,7 +289,37 @@ async function initCandlez() {
             });
         });
 
-        bindRangeControls();
+        rangeSelector = createRangeSelector({
+            chartId: 'range-chart',
+            selectionId: 'range-selection',
+            shadeLeftId: 'range-shade-left',
+            shadeRightId: 'range-shade-right',
+            displayId: 'range-display',
+            minLabelId: 'range-min',
+            maxLabelId: 'range-max',
+            values: cachedData.prices,
+            formatRangeLabel: (startIndex, endIndex) => {
+                const startDate = calculateDate(cachedData.start, startIndex);
+                const endDate = calculateDate(cachedData.start, endIndex);
+                return `${startDate} → ${endDate}`;
+            },
+            formatMinLabel: () => cachedData.start,
+            formatMaxLabel: () => calculateDate(cachedData.start, cachedData.prices.length - 1),
+            onRangeChange: (startIndex, endIndex) => {
+                rangeState.startIndex = startIndex;
+                rangeState.endIndex = endIndex;
+                renderForUnit(currentUnit);
+            },
+            lineColor: 'rgba(74, 222, 128, 0.9)',
+            fillTop: 'rgba(74, 222, 128, 0.25)',
+            fillBottom: 'rgba(74, 222, 128, 0.02)'
+        });
+
+        if (rangeSelector) {
+            const initialRange = rangeSelector.getRange();
+            rangeState.startIndex = initialRange.startIndex;
+            rangeState.endIndex = initialRange.endIndex;
+        }
         renderForUnit(currentUnit);
     } catch (error) {
         console.error('Failed to initialize candle histogram:', error);

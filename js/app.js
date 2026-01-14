@@ -1,6 +1,6 @@
 // Main application coordinator
 import { getCurrentPrice } from './data/priceService.js';
-import { loadHistoricalData, getLatestPrice, getPriceForDate } from './data/historicalData.js';
+import { loadHistoricalData, getLatestPrice, getPriceForDate, parseDate } from './data/historicalData.js';
 import { calculatePortfolioMetrics, calculateYearsBetweenDates } from './business/portfolio.js';
 import { TIME_WINDOWS, filterByTimeWindow, getAvailableTimeWindows, getCalendarStartDate } from './business/timeWindows.js';
 import { 
@@ -12,6 +12,7 @@ import {
     updateStatusWithTimeWindow
 } from './ui/display.js';
 import { initChart, updateChart, resizeChart } from './ui/chartService.js';
+import { createRangeSelector } from './ui/rangeSelector.js';
 
 /**
  * Parse URL parameters to get BTC amount
@@ -62,7 +63,7 @@ function updateUrl(btcAmount, timeWindow) {
     }
     
     // Update period parameter
-    if (timeWindow !== 'all') {
+    if (timeWindow !== 'all' && timeWindow !== 'custom') {
         url.searchParams.set('period', timeWindow);
     } else {
         url.searchParams.delete('period');
@@ -127,7 +128,7 @@ function formatYears(years) {
  * Update portfolio metrics display
  * @param {Object} metrics - Portfolio metrics object
  */
-function updateMetricsDisplay(metrics) {
+function updateMetricsDisplay(metrics, priceContext = {}) {
     const elements = {
         'total-gain-usd': formatCurrency(metrics.absoluteGain),
         'total-gain-percent': formatPercentage(metrics.percentageGain),
@@ -139,11 +140,15 @@ function updateMetricsDisplay(metrics) {
     
     // Helper function to get current price from metrics
     function getCurrentPriceFromMetrics(m) {
+        if (priceContext.currentPrice) {
+            return priceContext.currentPrice;
+        }
         return m.totalValue / (m.initialValue / (m.initialValue / m.totalValue * m.totalValue));
     }
     
     // Calculate purchase price: initialValue / btcAmount
-    const purchasePrice = metrics.initialValue / (metrics.totalValue / globalCurrentPrice);
+    const purchasePriceBase = priceContext.currentPrice || globalCurrentPrice;
+    const purchasePrice = metrics.initialValue / (metrics.totalValue / purchasePriceBase);
     elements['purchase-price'] = formatCurrency(purchasePrice);
     
     Object.entries(elements).forEach(([id, value]) => {
@@ -169,8 +174,117 @@ function updateMetricsDisplay(metrics) {
 let globalCurrentPrice = 0;
 let globalBtcAmount = 1;
 let globalHistoricalData = null;
+let globalPriceData = null;
 let currentTimeWindow = 'all';
 let chartInstance = null;
+
+const priceRangeState = {
+    startIndex: 0,
+    endIndex: 0
+};
+
+let priceRangeSelector = null;
+
+function buildPriceData() {
+    if (!globalHistoricalData) {
+        return [];
+    }
+    return globalHistoricalData.prices.map((price, index) => {
+        const date = new Date(globalHistoricalData.start);
+        date.setDate(date.getDate() + index);
+        return { date, price };
+    });
+}
+
+function getIndexForDate(date) {
+    if (!globalHistoricalData) return 0;
+    const start = parseDate(globalHistoricalData.start);
+    const diff = Math.floor((date - start) / (1000 * 60 * 60 * 24));
+    return Math.min(Math.max(diff, 0), globalHistoricalData.prices.length - 1);
+}
+
+function setPriceRange(startIndex, endIndex) {
+    if (!globalHistoricalData) return;
+    const maxIndex = globalHistoricalData.prices.length - 1;
+    priceRangeState.startIndex = Math.max(0, Math.min(startIndex, maxIndex));
+    priceRangeState.endIndex = Math.max(0, Math.min(endIndex, maxIndex));
+    if (priceRangeState.startIndex > priceRangeState.endIndex) {
+        [priceRangeState.startIndex, priceRangeState.endIndex] = [priceRangeState.endIndex, priceRangeState.startIndex];
+    }
+    if (priceRangeSelector) {
+        priceRangeSelector.setRange(priceRangeState.startIndex, priceRangeState.endIndex, { emit: false });
+    }
+}
+
+function applyCustomRange() {
+    currentTimeWindow = 'custom';
+    updateTimeWindowButtons(currentTimeWindow);
+    updatePortfolioMetricsForTimeWindow(currentTimeWindow);
+    updateChartForTimeWindow(currentTimeWindow);
+    updateUrl(globalBtcAmount, currentTimeWindow);
+}
+
+function syncRangeToTimeWindow(timeWindow) {
+    if (!globalHistoricalData) return;
+    const maxIndex = globalHistoricalData.prices.length - 1;
+    if (timeWindow === 'all') {
+        setPriceRange(0, maxIndex);
+        return;
+    }
+    if (timeWindow === 'custom') {
+        return;
+    }
+    const windowConfig = TIME_WINDOWS[timeWindow];
+    if (!windowConfig) return;
+    const currentDate = new Date();
+    let startDate;
+    if (windowConfig.type === 'calendar' || windowConfig.type === 'daily') {
+        startDate = getCalendarStartDate(timeWindow, currentDate);
+    } else {
+        startDate = new Date(currentDate);
+        startDate.setDate(startDate.getDate() - windowConfig.days);
+    }
+    const startIndex = getIndexForDate(startDate);
+    setPriceRange(startIndex, maxIndex);
+}
+
+function bindPriceRangeControls() {
+    if (!globalHistoricalData) return;
+
+    priceRangeSelector = createRangeSelector({
+        chartId: 'price-range-chart',
+        selectionId: 'price-range-selection',
+        shadeLeftId: 'price-range-shade-left',
+        shadeRightId: 'price-range-shade-right',
+        displayId: 'price-range-display',
+        minLabelId: 'price-range-min',
+        maxLabelId: 'price-range-max',
+        values: globalHistoricalData.prices,
+        formatRangeLabel: (startIndex, endIndex) => {
+            const startDate = new Date(globalHistoricalData.start);
+            startDate.setDate(startDate.getDate() + startIndex);
+            const endDate = new Date(globalHistoricalData.start);
+            endDate.setDate(endDate.getDate() + endIndex);
+            return `${startDate.toISOString().split('T')[0]} → ${endDate.toISOString().split('T')[0]}`;
+        },
+        formatMinLabel: () => globalHistoricalData.start,
+        formatMaxLabel: () => globalHistoricalData.endDate.toISOString().split('T')[0],
+        onRangeChange: (startIndex, endIndex) => {
+            priceRangeState.startIndex = startIndex;
+            priceRangeState.endIndex = endIndex;
+            applyCustomRange();
+        },
+        lineColor: 'rgba(247, 147, 26, 0.9)',
+        fillTop: 'rgba(247, 147, 26, 0.35)',
+        fillBottom: 'rgba(247, 147, 26, 0.05)'
+    });
+
+    if (priceRangeSelector) {
+        const initialRange = priceRangeSelector.getRange();
+        priceRangeState.startIndex = initialRange.startIndex;
+        priceRangeState.endIndex = initialRange.endIndex;
+    }
+}
 
 function getCurrentPriceForDisplay() {
     return globalCurrentPrice;
@@ -226,20 +340,13 @@ function updateChartForTimeWindow(timeWindow) {
     }
 
     try {
-        // Convert historical data to format expected by time windows
-        const priceData = [];
-        for (let i = 0; i < globalHistoricalData.prices.length; i++) {
-            const date = new Date(globalHistoricalData.start);
-            date.setDate(date.getDate() + i);
-            priceData.push({
-                date: date,
-                price: globalHistoricalData.prices[i]
-            });
-        }
+        const priceData = globalPriceData || buildPriceData();
 
         let filteredData;
         
-        if (timeWindow === 'all') {
+        if (timeWindow === 'custom') {
+            filteredData = priceData.slice(priceRangeState.startIndex, priceRangeState.endIndex + 1);
+        } else if (timeWindow === 'all') {
             filteredData = priceData;
         } else {
             // Filter data based on time window
@@ -263,7 +370,12 @@ function updateChartForTimeWindow(timeWindow) {
         }
 
         // Add current API price as the latest data point if different from latest historical
-        const enhancedData = addCurrentPriceToData(filteredData, globalCurrentPrice);
+        let enhancedData = filteredData;
+        const lastIndex = globalHistoricalData.prices.length - 1;
+        const allowCurrent = timeWindow !== 'custom' || priceRangeState.endIndex >= lastIndex;
+        if (allowCurrent) {
+            enhancedData = addCurrentPriceToData(filteredData, globalCurrentPrice);
+        }
         
         // Update chart with enhanced data
         updateChart(enhancedData, globalBtcAmount, timeWindow);
@@ -286,6 +398,35 @@ function updatePortfolioMetricsForTimeWindow(timeWindow) {
     try {
         showMetricsLoading();
         
+        if (timeWindow === 'custom') {
+            const startIndex = priceRangeState.startIndex;
+            const endIndex = priceRangeState.endIndex;
+            const startDate = new Date(globalHistoricalData.start);
+            startDate.setDate(startDate.getDate() + startIndex);
+            const endDate = new Date(globalHistoricalData.start);
+            endDate.setDate(endDate.getDate() + endIndex);
+
+            if (startIndex === endIndex) {
+                showMetricsError('Select a wider range');
+                updateStatusWithTimeWindow(timeWindow, startDate, endDate, 1);
+                return;
+            }
+
+            const startPrice = globalHistoricalData.prices[startIndex];
+            const lastIndex = globalHistoricalData.prices.length - 1;
+            const endPrice = endIndex >= lastIndex ? globalCurrentPrice : globalHistoricalData.prices[endIndex];
+            const metrics = calculatePortfolioMetrics(
+                globalBtcAmount,
+                endPrice,
+                startPrice,
+                startDate,
+                endDate
+            );
+            updateMetricsDisplay(metrics, { currentPrice: endPrice });
+            updateStatusWithTimeWindow(timeWindow, startDate, endDate, endIndex - startIndex + 1);
+            return;
+        }
+
         if (timeWindow === 'all') {
             // Use the earliest historical date as the purchase date
             const purchaseDate = new Date(globalHistoricalData.start);
@@ -299,7 +440,7 @@ function updatePortfolioMetricsForTimeWindow(timeWindow) {
                     purchaseDate
                 );
                 
-                updateMetricsDisplay(metrics);
+                updateMetricsDisplay(metrics, { currentPrice: globalCurrentPrice });
                 updateTimeWindowTitle(timeWindow, TIME_WINDOWS[timeWindow]);
             }
         } else {
@@ -366,7 +507,7 @@ function updatePortfolioMetricsForTimeWindow(timeWindow) {
                     actualStartDate
                 );
                 
-                updateMetricsDisplay(metrics);
+                updateMetricsDisplay(metrics, { currentPrice: globalCurrentPrice });
                 updateTimeWindowTitle(timeWindow, windowConfig);
                 
                 // Calculate actual days for status display
@@ -411,30 +552,22 @@ function updateDisplay(btcAmount, currentPrice, historicalData = null) {
         portfolioValueEl.textContent = formatCurrency(portfolioValue);
     }
     
-    // Setup time window availability and calculate metrics
-    if (historicalData) {
-        // Convert historical data to format expected by time windows
-        const priceData = [];
-        for (let i = 0; i < historicalData.prices.length; i++) {
-            const date = new Date(historicalData.start);
-            date.setDate(date.getDate() + i);
-            priceData.push({
-                date: date,
-                price: historicalData.prices[i]
-            });
-        }
-        
-        const availableWindows = getAvailableTimeWindows(priceData);
-        updateTimeWindowAvailability(availableWindows);
-        
-        // Set the correct time window button state
-        updateTimeWindowButtons(currentTimeWindow);
-        
-        // Calculate metrics for current time window
-        updatePortfolioMetricsForTimeWindow(currentTimeWindow);
-        
-        // Update URL to reflect current state
-        updateUrl(btcAmount, currentTimeWindow);
+        // Setup time window availability and calculate metrics
+        if (historicalData) {
+            globalPriceData = buildPriceData();
+            
+            const availableWindows = getAvailableTimeWindows(globalPriceData);
+            updateTimeWindowAvailability(availableWindows);
+            
+            // Set the correct time window button state
+            updateTimeWindowButtons(currentTimeWindow);
+            syncRangeToTimeWindow(currentTimeWindow);
+            
+            // Calculate metrics for current time window
+            updatePortfolioMetricsForTimeWindow(currentTimeWindow);
+            
+            // Update URL to reflect current state
+            updateUrl(btcAmount, currentTimeWindow);
     }
     
     if (statusEl) {
@@ -459,6 +592,7 @@ function handleTimeWindowClick(event) {
         if (newTimeWindow && !event.target.disabled) {
             currentTimeWindow = newTimeWindow;
             updateTimeWindowButtons(currentTimeWindow);
+            syncRangeToTimeWindow(currentTimeWindow);
             updatePortfolioMetricsForTimeWindow(currentTimeWindow);
             updateChartForTimeWindow(currentTimeWindow);
             
@@ -599,6 +733,11 @@ async function init() {
             }
         } catch (error) {
             console.warn('Failed to initialize chart:', error);
+        }
+
+        if (finalHistoricalData) {
+            bindPriceRangeControls();
+            syncRangeToTimeWindow(currentTimeWindow);
         }
         
         // Setup time window button event listeners

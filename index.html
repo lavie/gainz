@@ -9,7 +9,7 @@
 <body>
     <header class="site-header">
         <nav class="site-nav">
-            <a href="index.html" class="nav-link active">Portfolio</a>
+            <a href="index.html" class="nav-link active">Gainz</a>
             <a href="candlez.html" class="nav-link">Candlez</a>
         </nav>
     </header>
@@ -43,7 +43,28 @@
             
             <section class="chart-section">
                 <div class="chart-container">
-                    <canvas id="price-chart"></canvas>
+                    <div class="price-chart-area">
+                        <canvas id="price-chart"></canvas>
+                    </div>
+                    <section class="range-section" aria-label="Date range">
+                        <div class="range-header">
+                            <span>Date range</span>
+                            <span id="price-range-display">--</span>
+                        </div>
+                        <div class="range-chart">
+                            <canvas id="price-range-chart"></canvas>
+                            <div class="range-shade left" id="price-range-shade-left"></div>
+                            <div class="range-shade right" id="price-range-shade-right"></div>
+                            <div class="range-selection" id="price-range-selection">
+                                <span class="range-handle left" data-handle="left" role="slider" aria-label="Start handle"></span>
+                                <span class="range-handle right" data-handle="right" role="slider" aria-label="End handle"></span>
+                            </div>
+                        </div>
+                        <div class="range-endpoints">
+                            <span id="price-range-min">--</span>
+                            <span id="price-range-max">--</span>
+                        </div>
+                    </section>
                 </div>
             </section>
             

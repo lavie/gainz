@@ -178,11 +178,13 @@ function renderChart(labels, redCounts, greenCounts, unit) {
             },
             scales: {
                 y: {
-                    type: 'logarithmic',
-                    min: 1,
+                    type: currentScale,
+                    min: currentScale === 'logarithmic' ? 1 : 0,
                     ticks: {
                         color: '#9ca3af',
-                        callback: (value) => Number.isInteger(value) ? value : ''
+                        callback: (value) => currentScale === 'logarithmic'
+                            ? (Number.isInteger(value) ? value : '')
+                            : value
                     },
                     grid: {
                         color: 'rgba(68, 68, 68, 0.4)'
@@ -223,8 +225,16 @@ function renderChart(labels, redCounts, greenCounts, unit) {
 }
 
 function updateToggleButtons(activeUnit) {
-    document.querySelectorAll('.toggle-btn').forEach((button) => {
+    document.querySelectorAll('.toggle-btn[data-unit]').forEach((button) => {
         const isActive = button.dataset.unit === activeUnit;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-pressed', isActive.toString());
+    });
+}
+
+function updateScaleButtons(activeScale) {
+    document.querySelectorAll('.toggle-btn[data-scale]').forEach((button) => {
+        const isActive = button.dataset.scale === activeScale;
         button.classList.toggle('active', isActive);
         button.setAttribute('aria-pressed', isActive.toString());
     });
@@ -232,6 +242,7 @@ function updateToggleButtons(activeUnit) {
 
 let candleChart = null;
 let cachedData = null;
+let currentScale = 'logarithmic';
 
 function formatStatsValue(value, unit) {
     return unit === UNIT_PERCENT ? formatPercent(value) : formatUSD(value);
@@ -267,6 +278,7 @@ function renderForUnit(unit) {
     }
     candleChart = renderChart(labels, redCounts, greenCounts, unit);
     updateToggleButtons(unit);
+    updateScaleButtons(currentScale);
 }
 
 const rangeState = {
@@ -276,7 +288,7 @@ const rangeState = {
 
 let rangeSelector = null;
 
-let currentUnit = UNIT_USD;
+let currentUnit = UNIT_PERCENT;
 
 async function initCandlez() {
     try {
@@ -284,10 +296,18 @@ async function initCandlez() {
 
         document.querySelectorAll('.toggle-btn').forEach((button) => {
             button.addEventListener('click', () => {
-                currentUnit = button.dataset.unit === UNIT_PERCENT ? UNIT_PERCENT : UNIT_USD;
+                if (button.dataset.unit) {
+                    currentUnit = button.dataset.unit === UNIT_PERCENT ? UNIT_PERCENT : UNIT_USD;
+                }
+                if (button.dataset.scale) {
+                    currentScale = button.dataset.scale === 'linear' ? 'linear' : 'logarithmic';
+                }
                 renderForUnit(currentUnit);
             });
         });
+
+        updateToggleButtons(currentUnit);
+        updateScaleButtons(currentScale);
 
         rangeSelector = createRangeSelector({
             chartId: 'range-chart',

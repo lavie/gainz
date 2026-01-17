@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Candlez – Bitcoin Daily Move Histogram</title>
+    <title>Weekmoves – Weekday vs Weekend Bitcoin Moves</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="candlez">
+<body class="weekmove">
     <header class="site-header">
         <nav class="site-nav">
             <a href="index.html" class="nav-link">Gainz</a>
-            <a href="candlez.html" class="nav-link active">Candlez</a>
-            <a href="weekmove.html" class="nav-link">Weekmoves</a>
+            <a href="candlez.html" class="nav-link">Candlez</a>
+            <a href="weekmove.html" class="nav-link active">Weekmoves</a>
         </nav>
     </header>
 
     <div class="container">
         <main>
             <section class="candlez-header">
-                <h1>Daily Candle Size Histogram</h1>
-                <p>Compare the distribution of red (down) vs green (up) daily moves.</p>
-                <div class="candlez-toggle" role="group" aria-label="Histogram units">
+                <h1>Weekday vs Weekend Move Magnitude</h1>
+                <p>Average daily move per week, split by weekdays (Mon–Fri) and weekends (Sat–Sun).</p>
+                <div class="candlez-toggle" role="group" aria-label="Move units">
                     <button type="button" class="toggle-btn" data-unit="usd" aria-pressed="false">USD</button>
                     <button type="button" class="toggle-btn active" data-unit="percent" aria-pressed="true">%</button>
                 </div>
@@ -32,56 +32,33 @@
 
             <section class="chart-section">
                 <div class="chart-container">
-                    <div class="histogram-area">
-                        <canvas id="candlez-chart"></canvas>
+                    <div class="weekmove-area">
+                        <canvas id="weekmove-chart"></canvas>
                     </div>
                     <section class="range-section" aria-label="Date range">
                         <div class="range-header">
                             <span>Date range</span>
-                            <span id="range-display">--</span>
+                            <span id="weekmove-range-display">--</span>
                         </div>
                         <div class="range-chart">
-                            <canvas id="range-chart"></canvas>
-                            <div class="range-shade left" id="range-shade-left"></div>
-                            <div class="range-shade right" id="range-shade-right"></div>
-                            <div class="range-selection" id="range-selection">
+                            <canvas id="weekmove-range-chart"></canvas>
+                            <div class="range-shade left" id="weekmove-range-shade-left"></div>
+                            <div class="range-shade right" id="weekmove-range-shade-right"></div>
+                            <div class="range-selection" id="weekmove-range-selection">
                                 <span class="range-handle left" data-handle="left" role="slider" aria-label="Start handle"></span>
                                 <span class="range-handle right" data-handle="right" role="slider" aria-label="End handle"></span>
                             </div>
                         </div>
                         <div class="range-endpoints">
-                            <span id="range-min">--</span>
-                            <span id="range-max">--</span>
+                            <span id="weekmove-range-min">--</span>
+                            <span id="weekmove-range-max">--</span>
                         </div>
                     </section>
                 </div>
             </section>
 
-            <section class="candlez-stats">
-                <div class="stats-card red">
-                    <div class="stats-title">Red Days</div>
-                    <div class="stats-line">Count: <span id="red-count">--</span></div>
-                    <div class="stats-line">Mean move: <span id="red-mean">--</span></div>
-                    <div class="stats-line">Median move: <span id="red-median">--</span></div>
-                    <div class="stats-line">90th pct: <span id="red-p90">--</span></div>
-                </div>
-                <div class="stats-card green">
-                    <div class="stats-title">Green Days</div>
-                    <div class="stats-line">Count: <span id="green-count">--</span></div>
-                    <div class="stats-line">Mean move: <span id="green-mean">--</span></div>
-                    <div class="stats-line">Median move: <span id="green-median">--</span></div>
-                    <div class="stats-line">90th pct: <span id="green-p90">--</span></div>
-                </div>
-                <div class="stats-card neutral">
-                    <div class="stats-title">Flat Days</div>
-                    <div class="stats-line">Count: <span id="flat-count">--</span></div>
-                    <div class="stats-line">Definition: <span id="flat-definition">Close = Close</span></div>
-                    <div class="stats-line">Excluded from histograms</div>
-                </div>
-            </section>
-
-            <p class="candlez-note">Note: Daily candle size is calculated from close-to-close movement using the historical close prices in <code>btc-prices.json</code>. This is not intraday OHLC data.</p>
-            <div id="candlez-status" class="candlez-status"></div>
+            <p class="candlez-note">Note: Move magnitude is calculated from close-to-close changes using the historical close prices in <code>btc-prices.json</code>.</p>
+            <div id="weekmove-status" class="candlez-status"></div>
         </main>
         <footer class="site-footer">
             <a href="https://github.com/lavie/gainz" target="_blank" rel="noopener noreferrer" class="github-link" title="View on GitHub">
@@ -93,6 +70,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="module" src="js/candlez.js"></script>
+    <script type="module" src="js/weekmove.js"></script>
 </body>
 </html>

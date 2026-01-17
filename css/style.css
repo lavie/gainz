@@ -548,6 +548,16 @@ body.candlez .chart-container {
     gap: 0.25rem;
 }
 
+.candlez-toggle.small {
+    margin-top: 0.5rem;
+    padding: 0.25rem;
+}
+
+.candlez-toggle.small .toggle-btn {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.9rem;
+}
+
 .toggle-btn {
     background: transparent;
     border: none;
@@ -715,6 +725,47 @@ body.candlez .chart-container {
 
 @media (max-width: 480px) {
     .histogram-area {
+        height: 220px;
+    }
+}
+
+/* Weekmove Page */
+body.weekmove {
+    overflow-y: auto;
+    height: auto;
+}
+
+body.weekmove .container {
+    min-height: 100vh;
+}
+
+body.weekmove .chart-section {
+    flex: 0 0 auto;
+}
+
+body.weekmove .chart-container {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+}
+
+.weekmove-area {
+    height: 360px;
+}
+
+#weekmove-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+@media (max-width: 768px) {
+    .weekmove-area {
+        height: 260px;
+    }
+}
+
+@media (max-width: 480px) {
+    .weekmove-area {
         height: 220px;
     }
 }

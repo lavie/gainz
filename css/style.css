@@ -750,7 +750,7 @@ body.weekmove .chart-container {
 }
 
 .weekmove-area {
-    height: 360px;
+    height: 440px;
 }
 
 #weekmove-chart {
@@ -760,12 +760,12 @@ body.weekmove .chart-container {
 
 @media (max-width: 768px) {
     .weekmove-area {
-        height: 260px;
+        height: 320px;
     }
 }
 
 @media (max-width: 480px) {
     .weekmove-area {
-        height: 220px;
+        height: 260px;
     }
 }

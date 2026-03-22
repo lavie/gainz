@@ -1,5 +1,10 @@
 import { createRangeSelector } from './ui/rangeSelector.js';
-import { formatDate, parseDate } from './data/historicalData.js';
+import {
+    formatDate,
+    getPriceRange,
+    loadHistoricalData,
+    parseDate
+} from './data/historicalData.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CHART_START = parseDate('2011-01-01');
@@ -134,9 +139,20 @@ function findCrossover(currentDate, currentHeight, maxDaysAhead = 8000) {
     return null;
 }
 
-function buildSeries(currentDate, currentHeight) {
+function buildActualPriceMap(historicalData, currentDate) {
+    if (!historicalData) {
+        return new Map();
+    }
+
+    const priceRange = getPriceRange(historicalData, formatDate(CHART_START), formatDate(currentDate));
+    const mondayPrices = priceRange.filter((point) => parseDate(point.date).getUTCDay() === 1);
+    return new Map(mondayPrices.map((point) => [point.date, point.price]));
+}
+
+function buildSeries(currentDate, currentHeight, historicalData = null) {
     const anchors = buildHeightAnchors(currentDate, currentHeight);
     const crossover = findCrossover(currentDate, currentHeight);
+    const actualPriceByDate = buildActualPriceMap(historicalData, currentDate);
     const postCrossoverDays = crossover
         ? Math.max(daysBetween(CHART_START, crossover.date), 365)
         : 3650;
@@ -153,6 +169,7 @@ function buildSeries(currentDate, currentHeight) {
 
         points.push({
             date: new Date(date),
+            actualPrice: actualPriceByDate.get(formatDate(date)) ?? null,
             support,
             blockHeight,
             isProjected: date > currentDate
@@ -204,6 +221,10 @@ function renderStats(snapshot) {
 }
 
 function buildDatasets(points, crossover) {
+    const actualPricePoints = points.map((point) => ({
+        x: point.date,
+        y: point.actualPrice
+    }));
     const supportPoints = points.map((point) => ({ x: point.date, y: point.support }));
     const lastHistoricalIndex = points.findLastIndex((point) => !point.isProjected);
     const historyPoints = points.map((point) => ({
@@ -216,6 +237,17 @@ function buildDatasets(points, crossover) {
     }));
 
     const datasets = [
+        {
+            label: 'Price (actual)',
+            data: actualPricePoints,
+            borderColor: 'rgba(226, 232, 240, 0.95)',
+            backgroundColor: 'rgba(226, 232, 240, 0.08)',
+            borderWidth: 1,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            tension: 0,
+            spanGaps: true
+        },
         {
             label: 'Price (power law)',
             data: supportPoints,
@@ -306,7 +338,7 @@ function renderChart(snapshot) {
                     callbacks: {
                         title: (items) => items.length ? formatDate(new Date(items[0].parsed.x)) : '',
                         label: (context) => {
-                            if (context.dataset.label === 'Price (power law)') {
+                            if (context.dataset.label.startsWith('Price')) {
                                 return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
                             }
                             return `${context.dataset.label}: ${formatNumber(context.parsed.y)}`;
@@ -389,7 +421,10 @@ async function initPowerHeight() {
     ));
 
     let currentHeight = getFallbackCurrentHeight(currentDateUtc);
+    let historicalData = null;
     let usingFallbackHeight = false;
+    let missingHistoricalData = false;
+    const statusMessages = [];
 
     try {
         currentHeight = await fetchCurrentHeight();
@@ -398,10 +433,17 @@ async function initPowerHeight() {
         console.error('Falling back to estimated tip height:', error);
     }
 
+    try {
+        historicalData = await loadHistoricalData();
+    } catch (error) {
+        missingHistoricalData = true;
+        console.error('Failed to load historical price data:', error);
+    }
+
     const snapshot = {
         currentDate: currentDateUtc,
         currentHeight,
-        ...buildSeries(currentDateUtc, currentHeight)
+        ...buildSeries(currentDateUtc, currentHeight, historicalData)
     };
 
     series = snapshot.points;
@@ -417,7 +459,15 @@ async function initPowerHeight() {
     }
 
     if (usingFallbackHeight) {
-        setText('powerheight-status', 'Live tip height fetch failed, using a fallback height estimate from the 2024 halving anchor.');
+        statusMessages.push('Live tip height fetch failed, using a fallback height estimate from the 2024 halving anchor.');
+    }
+
+    if (missingHistoricalData) {
+        statusMessages.push('Historical BTC price data failed to load, so the actual-price line is unavailable.');
+    }
+
+    if (statusMessages.length) {
+        setText('powerheight-status', statusMessages.join(' '));
     }
 }
 

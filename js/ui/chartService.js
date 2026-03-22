@@ -1,5 +1,56 @@
 // Chart service for Bitcoin price visualization
 let chartInstance = null;
+let currentScale = 'linear';
+
+function isPowerOfTen(value) {
+    if (!Number.isFinite(value) || value <= 0) {
+        return false;
+    }
+    const log10 = Math.log10(value);
+    return Math.abs(log10 - Math.round(log10)) < 1e-9;
+}
+
+function formatAxisValue(value) {
+    return '$' + Number(value).toLocaleString();
+}
+
+function getPositiveMin(values) {
+    const positiveValues = values.filter((value) => typeof value === 'number' && value > 0);
+    return positiveValues.length ? Math.min(...positiveValues) : null;
+}
+
+function applyScaleConfig(values = []) {
+    if (!chartInstance) {
+        return;
+    }
+
+    const yScale = chartInstance.options.scales.y;
+    const y1Scale = chartInstance.options.scales.y1;
+    const positiveMin = getPositiveMin(values);
+    const resolvedScale = currentScale === 'logarithmic' && positiveMin !== null
+        ? 'logarithmic'
+        : 'linear';
+
+    yScale.type = resolvedScale;
+    y1Scale.type = resolvedScale;
+
+    yScale.ticks.callback = (value) => {
+        if (resolvedScale === 'logarithmic') {
+            return isPowerOfTen(value) ? formatAxisValue(value) : '';
+        }
+        return formatAxisValue(value);
+    };
+    y1Scale.ticks.callback = yScale.ticks.callback;
+
+    if (resolvedScale === 'logarithmic') {
+        const minValue = Math.pow(10, Math.floor(Math.log10(positiveMin)));
+        yScale.min = minValue;
+        y1Scale.min = minValue;
+    } else {
+        delete yScale.min;
+        delete y1Scale.min;
+    }
+}
 
 /**
  * Initialize the Bitcoin price chart
@@ -65,6 +116,7 @@ export function initChart(canvasId) {
                     }
                 },
                 y: {
+                    type: currentScale,
                     position: 'left',
                     grid: {
                         color: 'rgba(255, 255, 255, 0.1)',
@@ -77,12 +129,12 @@ export function initChart(canvasId) {
                             size: 11
                         },
                         callback: function(value) {
-                            return '$' + value.toLocaleString();
+                            return formatAxisValue(value);
                         }
                     }
                 },
                 y1: {
-                    type: 'linear',
+                    type: currentScale,
                     position: 'right',
                     grid: {
                         display: false, // Don't show grid lines from right axis to avoid duplication
@@ -95,7 +147,7 @@ export function initChart(canvasId) {
                             size: 11
                         },
                         callback: function(value) {
-                            return '$' + value.toLocaleString();
+                            return formatAxisValue(value);
                         }
                     }
                 }
@@ -195,6 +247,7 @@ export function updateChart(priceData, btcAmount = 1, timeWindow = 'all') {
 
     chartInstance.data.labels = labels;
     chartInstance.data.datasets[0].data = portfolioValues;
+    applyScaleConfig(portfolioValues);
     
     // Store BTC amount in dataset for tooltip calculations
     chartInstance.data.datasets[0].btcAmount = btcAmount;
@@ -268,6 +321,18 @@ function updateTimeFormat(timeWindow) {
  */
 export function getChart() {
     return chartInstance;
+}
+
+export function setChartScale(scale) {
+    currentScale = scale === 'logarithmic' ? 'logarithmic' : 'linear';
+
+    if (!chartInstance) {
+        return;
+    }
+
+    const values = chartInstance.data.datasets[0]?.data || [];
+    applyScaleConfig(values);
+    chartInstance.update('none');
 }
 
 /**

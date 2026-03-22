@@ -11,7 +11,7 @@ import {
     updateTimeWindowAvailability,
     updateStatusWithTimeWindow
 } from './ui/display.js';
-import { initChart, updateChart, resizeChart } from './ui/chartService.js';
+import { initChart, updateChart, resizeChart, setChartScale } from './ui/chartService.js?v=2';
 import { createRangeSelector } from './ui/rangeSelector.js';
 
 /**
@@ -177,6 +177,7 @@ let globalHistoricalData = null;
 let globalPriceData = null;
 let currentTimeWindow = 'all';
 let chartInstance = null;
+let currentChartScale = 'linear';
 
 const priceRangeState = {
     startIndex: 0,
@@ -184,6 +185,14 @@ const priceRangeState = {
 };
 
 let priceRangeSelector = null;
+
+function updateScaleButtons(activeScale) {
+    document.querySelectorAll('.toggle-btn[data-scale]').forEach((button) => {
+        const isActive = button.dataset.scale === activeScale;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-pressed', isActive.toString());
+    });
+}
 
 function buildPriceData() {
     if (!globalHistoricalData) {
@@ -602,6 +611,20 @@ function handleTimeWindowClick(event) {
     }
 }
 
+function handleScaleClick(event) {
+    if (!event.target.classList.contains('toggle-btn') || !event.target.dataset.scale) {
+        return;
+    }
+
+    currentChartScale = event.target.dataset.scale === 'logarithmic' ? 'logarithmic' : 'linear';
+    updateScaleButtons(currentChartScale);
+    setChartScale(currentChartScale);
+
+    if (globalHistoricalData && chartInstance) {
+        updateChartForTimeWindow(currentTimeWindow);
+    }
+}
+
 /**
  * Handle BTC amount input changes
  * @param {Event} event - Input event
@@ -727,6 +750,8 @@ async function init() {
         // Initialize chart
         try {
             chartInstance = initChart('price-chart');
+            setChartScale(currentChartScale);
+            updateScaleButtons(currentChartScale);
             // Update chart with data after initialization
             if (finalHistoricalData) {
                 updateChartForTimeWindow(currentTimeWindow);
@@ -744,6 +769,11 @@ async function init() {
         const timeWindowButtons = document.querySelector('.time-window-buttons');
         if (timeWindowButtons) {
             timeWindowButtons.addEventListener('click', handleTimeWindowClick);
+        }
+
+        const scaleToggle = document.querySelector('.toggle-btn[data-scale]')?.parentElement;
+        if (scaleToggle) {
+            scaleToggle.addEventListener('click', handleScaleClick);
         }
         
         // Setup BTC amount input handlers

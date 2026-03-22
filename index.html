@@ -41,6 +41,10 @@
                     <button class="time-window-btn" data-window="10y" aria-pressed="false">10Y</button>
                     <button class="time-window-btn" data-window="all" aria-pressed="false">ALL</button>
                 </div>
+                <div class="candlez-toggle small" role="group" aria-label="Y-axis scale">
+                    <button type="button" class="toggle-btn" data-scale="logarithmic" aria-pressed="false">Log</button>
+                    <button type="button" class="toggle-btn active" data-scale="linear" aria-pressed="true">Linear</button>
+                </div>
             </section>
             
             <section class="chart-section">
@@ -111,6 +115,6 @@
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <script type="module" src="js/app.js"></script>
+    <script type="module" src="js/app.js?v=2"></script>
 </body>
 </html>

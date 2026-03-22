@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC Price vs. Block Height</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="powerheight">
+    <header class="site-header">
+        <nav class="site-nav">
+            <a href="index.html" class="nav-link">Gainz</a>
+            <a href="candlez.html" class="nav-link">Candlez</a>
+            <a href="weekmove.html" class="nav-link">Weekmoves</a>
+            <a href="powerheight.html" class="nav-link active">PowerHeight</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <main>
+            <section class="candlez-header">
+                <h1>BTC Price vs. Block Height</h1>
+            </section>
+
+            <section class="chart-section">
+                <div class="chart-container">
+                    <div class="powerheight-area">
+                        <canvas id="powerheight-chart"></canvas>
+                    </div>
+                    <section class="range-section" aria-label="Date range">
+                        <div class="range-header">
+                            <span>Date range</span>
+                            <span id="powerheight-range-display">--</span>
+                        </div>
+                        <div class="range-chart">
+                            <canvas id="powerheight-range-chart"></canvas>
+                            <div class="range-shade left" id="powerheight-range-shade-left"></div>
+                            <div class="range-shade right" id="powerheight-range-shade-right"></div>
+                            <div class="range-selection" id="powerheight-range-selection">
+                                <span class="range-handle left" data-handle="left" role="slider" aria-label="Start handle"></span>
+                                <span class="range-handle right" data-handle="right" role="slider" aria-label="End handle"></span>
+                            </div>
+                        </div>
+                        <div class="range-endpoints">
+                            <span id="powerheight-range-min">--</span>
+                            <span id="powerheight-range-max">--</span>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section class="candlez-stats">
+                <div class="stats-card red">
+                    <div class="stats-title">Support Today</div>
+                    <div class="stats-line"><span id="powerheight-support-today">--</span></div>
+                </div>
+                <div class="stats-card height">
+                    <div class="stats-title">Block Height Today</div>
+                    <div class="stats-line"><span id="powerheight-height-today">--</span></div>
+                </div>
+                <div class="stats-card neutral">
+                    <div class="stats-title">Gap Today</div>
+                    <div class="stats-line"><span id="powerheight-gap-today">--</span></div>
+                    <div class="stats-line">Support minus height on the shared scale.</div>
+                </div>
+                <div class="stats-card cross">
+                    <div class="stats-title">Estimated Crossover</div>
+                    <div class="stats-line">Date: <span id="powerheight-cross-date">--</span></div>
+                    <div class="stats-line">Level: <span id="powerheight-cross-value">--</span></div>
+                </div>
+            </section>
+
+            <p class="candlez-note">Support uses the Bitbo support-line fit reconstructed from the live page's inline support series. Block height uses historical anchor interpolation up to the live tip, then projects forward at 144 blocks per day.</p>
+            <div id="powerheight-status" class="candlez-status"></div>
+        </main>
+        <footer class="site-footer">
+            <a href="https://github.com/lavie/gainz" target="_blank" rel="noopener noreferrer" class="github-link" title="View on GitHub">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.30.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+            </a>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script type="module" src="js/powerheight.js?v=3"></script>
+</body>
+</html>

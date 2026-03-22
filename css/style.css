@@ -769,3 +769,54 @@ body.weekmove .chart-container {
         height: 260px;
     }
 }
+
+/* PowerHeight Page */
+body.powerheight {
+    overflow-y: auto;
+    height: auto;
+}
+
+body.powerheight .container {
+    min-height: 100vh;
+    max-width: 1440px;
+    width: 100%;
+}
+
+body.powerheight .chart-section {
+    flex: 0 0 auto;
+}
+
+body.powerheight .chart-container {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+}
+
+.powerheight-area {
+    height: 460px;
+}
+
+#powerheight-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.stats-card.height {
+    border-color: rgba(56, 189, 248, 0.6);
+}
+
+.stats-card.cross {
+    border-color: rgba(247, 147, 26, 0.6);
+}
+
+@media (max-width: 768px) {
+    .powerheight-area {
+        height: 380px;
+    }
+}
+
+@media (max-width: 480px) {
+    .powerheight-area {
+        height: 360px;
+    }
+}
